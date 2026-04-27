@@ -1,5 +1,8 @@
 bin/
 obj/
 .vs/
+.vscode/
+.idea/
+.config/
 *.user
 *.suo
