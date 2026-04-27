@@ -28,11 +28,20 @@ public class Game1 : Game
     private const float MoveSpeed = 4f;
     private const float Gravity = 0.35f;
     private const float JumpForce = -8f;
+    private const float Acceleration = 0.45f;
+    private const float Friction = 0.4f;
+    private const float AirControl = 0.15f;
+    private const float MaxFallSpeed = 16f;
 
 
     private Rectangle PlayerBounds =>
     new Rectangle((int)_playerPosition.X, (int)_playerPosition.Y, PlayerWidth, PlayerHeight);
 
+    private bool IsInsidePortal(Rectangle bounds)
+    {
+        return (_bluePortal != null && bounds.Intersects(_bluePortal.Bounds)) ||
+               (_orangePortal != null && bounds.Intersects(_orangePortal.Bounds));
+    }
     #endregion
 
     #region Порталы
@@ -51,6 +60,7 @@ public class Game1 : Game
     private float _inputLockTimer = 0f;
     private float _portalExitTimer = 0.08f;
     private float _sameDirectionPortalSpeed = 0f;
+    private KeyboardState _previousKeyboardState;
 
     private class Portal
     {
@@ -143,6 +153,33 @@ public class Game1 : Game
                     newPortal = new Rectangle(portalX, portalY, PortalHeight, PortalWidth);
                 }
 
+                const int magnetDistance = 5;
+
+                if (isBlue && _orangePortal != null)
+                {
+                    Rectangle magnetZone = _orangePortal.Bounds;
+                    magnetZone.Inflate(magnetDistance, magnetDistance);
+
+                    if (magnetZone.Intersects(newPortal))
+                    {
+                        newPortal = _orangePortal.Bounds;
+                        exitDirection = _orangePortal.ExitDirection;
+                        _orangePortal = null;
+                    }
+                }
+                else if (!isBlue && _bluePortal != null)
+                {
+                    Rectangle magnetZone = _bluePortal.Bounds;
+                    magnetZone.Inflate(magnetDistance, magnetDistance);
+
+                    if (magnetZone.Intersects(newPortal))
+                    {
+                        newPortal = _bluePortal.Bounds;
+                        exitDirection = _bluePortal.ExitDirection;
+                        _bluePortal = null;
+                    }
+                }
+
                 var portal = new Portal(newPortal, exitDirection);
 
                 if (isBlue)
@@ -182,7 +219,7 @@ public class Game1 : Game
 
         _preserveMomentum = true;
 
-        _portalExitTimer = 0.15f; // время “свободного вылета”
+        _portalExitTimer = 0.15f; // время свободного вылета
     }
 
     private Vector2 RotateMomentum(Vector2 velocity, Vector2 entryDirection, Vector2 exitDirection)
@@ -192,14 +229,14 @@ public class Game1 : Game
         if (speed < 1f)
             return Vector2.Zero;
 
-        // Если порталы смотрят в одну сторону, например пол -> пол
+        // если порталы смотрят в одну сторону
         if (entryDirection == exitDirection)
         {
             // первый раз запоминаем скорость входа
             if (_sameDirectionPortalSpeed <= 0f)
                 _sameDirectionPortalSpeed = speed;
 
-            // дальше не даём скорости расти
+            // дальше не даю скорости расти
             speed = Math.Min(speed, _sameDirectionPortalSpeed);
         }
         else
@@ -207,6 +244,9 @@ public class Game1 : Game
             // если тип перехода другой, сбрасываем запомненную скорость
             _sameDirectionPortalSpeed = 0f;
         }
+
+        if (speed > MaxFallSpeed)
+            speed = MaxFallSpeed;
 
         return exitDirection * speed;
     }
@@ -241,6 +281,16 @@ public class Game1 : Game
         var keyboard = Keyboard.GetState();
         var mouse = Mouse.GetState();
 
+        if (keyboard.IsKeyDown(Keys.R) &&
+    !_previousKeyboardState.IsKeyDown(Keys.R))
+        {
+            _bluePortal = null;
+            _orangePortal = null;
+            _isTeleporting = false;
+            _preserveMomentum = false;
+            _sameDirectionPortalSpeed = 0f;
+        }
+
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         if (_portalExitTimer > 0)
@@ -251,24 +301,47 @@ public class Game1 : Game
             Exit();
 
         // движение влево / вправо
+        float targetSpeed = 0f;
+
+        if (keyboard.IsKeyDown(Keys.A))
+            targetSpeed = -MoveSpeed;
+
+        if (keyboard.IsKeyDown(Keys.D))
+            targetSpeed = MoveSpeed;
+
         if (!_preserveMomentum)
         {
-            _playerVelocity.X = 0;
+            if (targetSpeed != 0)
+            {
+                float control = _isOnGround ? Acceleration : AirControl;
 
-            if (keyboard.IsKeyDown(Keys.A))
-                _playerVelocity.X = -MoveSpeed;
+                if (_playerVelocity.X < targetSpeed)
+                    _playerVelocity.X += control;
+                else if (_playerVelocity.X > targetSpeed)
+                    _playerVelocity.X -= control;
+            }
+            else
+            {
+                if (_isOnGround)
+                {
+                    if (_playerVelocity.X > 0)
+                        _playerVelocity.X -= Friction;
+                    else if (_playerVelocity.X < 0)
+                        _playerVelocity.X += Friction;
 
-            if (keyboard.IsKeyDown(Keys.D))
-                _playerVelocity.X = MoveSpeed;
+                    if (Math.Abs(_playerVelocity.X) < Friction)
+                        _playerVelocity.X = 0;
+                }
+            }
         }
         else
         {
-            // во время инерции можно чуть-чуть управлять в воздухе
+            // небольшое управление в воздухе во время инерции
             if (keyboard.IsKeyDown(Keys.A))
-                _playerVelocity.X -= 0.15f;
+                _playerVelocity.X -= AirControl;
 
             if (keyboard.IsKeyDown(Keys.D))
-                _playerVelocity.X += 0.15f;
+                _playerVelocity.X += AirControl;
         }
 
         // прыжок
@@ -293,6 +366,12 @@ public class Game1 : Game
 
         // гравитация
         _playerVelocity.Y += Gravity;
+
+        if (_playerVelocity.Y > MaxFallSpeed)
+            _playerVelocity.Y = MaxFallSpeed;
+
+        if (_playerVelocity.Y < -MaxFallSpeed)
+            _playerVelocity.Y = -MaxFallSpeed;
 
         var oldBounds = PlayerBounds;
 
@@ -327,40 +406,43 @@ public class Game1 : Game
         }
 
         // движение по Y
-        _playerPosition.Y += _playerVelocity.Y;
-        playerBounds = PlayerBounds;
-
+        float remainingY = _playerVelocity.Y;
         _isOnGround = false;
 
-        if (_portalExitTimer <= 0)
+        while (Math.Abs(remainingY) > 0)
         {
+            float stepY = Math.Clamp(remainingY, -2f, 2f);
+            remainingY -= stepY;
+
+            _playerPosition.Y += stepY;
+            playerBounds = PlayerBounds;
+
             foreach (var platform in _platforms)
             {
-                if (playerBounds.Intersects(platform))
+                if (!playerBounds.Intersects(platform))
+                    continue;
+
+                // коллизию пропускаем только если реально внутри портала
+                if (_portalExitTimer > 0 && IsInsidePortal(playerBounds))
+                    continue;
+
+                if (stepY > 0)
                 {
-                    bool touchingBluePortal = _bluePortal != null && playerBounds.Intersects(_bluePortal.Bounds);
-                    bool touchingOrangePortal = _orangePortal != null && playerBounds.Intersects(_orangePortal.Bounds);
-
-                    // если мы влетели в портал — не гасим скорость платформой
-                    if (touchingBluePortal || touchingOrangePortal)
-                        continue;
-
-                    if (_playerVelocity.Y > 0)
-                    {
-                        _playerPosition.Y = platform.Top - PlayerHeight;
-                        _playerVelocity.Y = 0;
-                        _isOnGround = true;
-                        _preserveMomentum = false;
-                    }
-                    else if (_playerVelocity.Y < 0)
-                    {
-                        _playerPosition.Y = platform.Bottom;
-                        _playerVelocity.Y = 0;
-                        _preserveMomentum = false;
-                    }
-
-                    playerBounds = PlayerBounds;
+                    _playerPosition.Y = platform.Top - PlayerHeight;
+                    _playerVelocity.Y = 0;
+                    _isOnGround = true;
                 }
+                else if (stepY < 0)
+                {
+                    _playerPosition.Y = platform.Bottom;
+                    _playerVelocity.Y = 0;
+                }
+
+                _preserveMomentum = false;
+                _sameDirectionPortalSpeed = 0f;
+                remainingY = 0;
+                playerBounds = PlayerBounds;
+                break;
             }
         }
 
@@ -389,8 +471,13 @@ public class Game1 : Game
                 _isTeleporting = false;
             }
         }
+        else
+        {
+            _isTeleporting = false;
+        }
 
-        _previousMouseState = mouse;
+            _previousMouseState = mouse;
+            _previousKeyboardState = keyboard;
         base.Update(gameTime);
     }
 
