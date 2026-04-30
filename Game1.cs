@@ -14,6 +14,7 @@ public class Game1 : Game
 
     private Texture2D _pixel;
     private List<Rectangle> _platforms = new List<Rectangle>();
+    private Rectangle _exit;
 
     #region Движениеигрока
     private Vector2 _playerPosition = new Vector2(100, 100);
@@ -62,6 +63,30 @@ public class Game1 : Game
     private float _sameDirectionPortalSpeed = 0f;
     private KeyboardState _previousKeyboardState;
 
+    private bool PortalOverlapsOtherPlatforms(Rectangle portal, Rectangle targetPlatform)
+    {
+        foreach (var platform in _platforms)
+        {
+            if (platform == targetPlatform)
+                continue;
+
+            if (portal.Intersects(platform))
+                return true;
+        }
+
+        return false;
+    }
+    private bool PointInsideBackgroundBlock(Point point)
+    {
+        foreach (var block in _backgroundBlocks)
+        {
+            if (block.Contains(point))
+                return true;
+        }
+
+        return false;
+    }
+
     private class Portal
     {
         public Rectangle Bounds;
@@ -92,6 +117,8 @@ public class Game1 : Game
         {
             Vector2 currentPoint = playerCenter + direction * distance;
             Point checkPoint = new Point((int)currentPoint.X, (int)currentPoint.Y);
+            if (PointInsideBackgroundBlock(checkPoint))
+                return;
 
             foreach (var platform in _platforms)
             {
@@ -152,6 +179,22 @@ public class Game1 : Game
 
                     newPortal = new Rectangle(portalX, portalY, PortalHeight, PortalWidth);
                 }
+
+                // проверяю что портал не висит на самом краю платформы
+                if (isWall)
+                {
+                    if (newPortal.Top <= platform.Top || newPortal.Bottom >= platform.Bottom)
+                        continue;
+                }
+                else
+                {
+                    if (newPortal.Left <= platform.Left || newPortal.Right >= platform.Right)
+                        continue;
+                }
+
+                if (PortalOverlapsOtherPlatforms(newPortal, platform))
+                    continue;
+
 
                 const int magnetDistance = 5;
 
@@ -252,18 +295,95 @@ public class Game1 : Game
     }
     #endregion
 
+    #region Уровни
+    private List<Rectangle> _backgroundBlocks = new List<Rectangle>();
+    private int _currentLevel = 1;
+
+    private void LoadLevel(int levelNumber)
+    {
+        _platforms.Clear();
+        _backgroundBlocks.Clear();
+
+        _bluePortal = null;
+        _orangePortal = null;
+        _isTeleporting = false;
+        _preserveMomentum = false;
+        _sameDirectionPortalSpeed = 0f;
+
+        if (levelNumber == 1)
+        {
+            _platforms.Clear();
+
+            _playerPosition = new Vector2(120, 760);
+            _exit = new Rectangle(1450, 780, 50, 80);
+
+            // границы комнаты
+            _platforms.Add(new Rectangle(0, 860, 1600, 40));   // пол
+            _platforms.Add(new Rectangle(0, 0, 40, 900));      // левая стена
+            _platforms.Add(new Rectangle(1560, 0, 40, 900));   // правая стена
+            _platforms.Add(new Rectangle(0, 0, 1600, 40));     // потолок
+
+            // центральный большой блок
+            _platforms.Add(new Rectangle(500, 420, 600, 40));  // верх
+            _platforms.Add(new Rectangle(500, 420, 40, 440));  // левая стенка
+            _platforms.Add(new Rectangle(1060, 420, 40, 440)); // правая стенка
+
+            // верхняя платформа (по центру)
+            int platformWidth = 300;
+            int centerX = (1600 - platformWidth) / 2;
+
+            _backgroundBlocks.Add(new Rectangle(540, 460, 520, 400));
+
+            _platforms.Add(new Rectangle(centerX, 200, platformWidth, 30));
+            _platforms.Add(new Rectangle(centerX, 230, platformWidth, 30));
+        }
+        else if (levelNumber == 2)
+        {
+            _playerPosition = new Vector2(120, 780);
+            _playerVelocity = Vector2.Zero;
+
+            _exit = new Rectangle(1480, 770, 50, 90);
+
+            // внешняя комната
+            _platforms.Add(new Rectangle(0, 860, 1600, 40));   // пол
+            _platforms.Add(new Rectangle(0, 0, 40, 900));      // левая стена
+            _platforms.Add(new Rectangle(1560, 0, 40, 900));   // правая стена
+            _platforms.Add(new Rectangle(0, 0, 1600, 40));     // потолок
+
+            // верхний левый большой блок
+            _platforms.Add(new Rectangle(40, 40, 800, 40));    // верх
+            _platforms.Add(new Rectangle(40, 40, 40, 240));    // левая стенка
+            _platforms.Add(new Rectangle(800, 40, 40, 240));   // правая стенка
+            _platforms.Add(new Rectangle(40, 240, 800, 40));   // низ
+
+            // центральный нижний блок
+            _platforms.Add(new Rectangle(480, 520, 420, 40));  // верх
+            _platforms.Add(new Rectangle(480, 520, 40, 340));  // левая стенка
+            _platforms.Add(new Rectangle(860, 520, 40, 340));  // правая стенка
+
+            // высокий правый блок
+            _platforms.Add(new Rectangle(1080, 280, 280, 40)); // верх
+            _platforms.Add(new Rectangle(1080, 280, 40, 580)); // левая стенка
+            _platforms.Add(new Rectangle(1320, 280, 40, 580)); // правая стенка
+
+            _backgroundBlocks.Add(new Rectangle(80, 80, 720, 160));     // верхний левый блок
+            _backgroundBlocks.Add(new Rectangle(520, 560, 340, 300));   // центральный блок
+            _backgroundBlocks.Add(new Rectangle(1120, 320, 200, 540));  // правый высокий блок
+
+
+        }
+
+        _playerVelocity = Vector2.Zero;
+    }
+    #endregion
+
     protected override void Initialize()
     {
-        _platforms.Add(new Rectangle(0, 400, 800, 50));   // нижний пол
-        _platforms.Add(new Rectangle(250, 330, 200, 30)); // средняя платформа
-        _platforms.Add(new Rectangle(520, 250, 180, 30)); // верхняя платформа
+        _graphics.PreferredBackBufferWidth = 1600;
+        _graphics.PreferredBackBufferHeight = 900;
+        _graphics.ApplyChanges();
 
-        // левая стена
-        _platforms.Add(new Rectangle(0, 0, 20, 500));
-        // правая стена
-        _platforms.Add(new Rectangle(780, 0, 20, 500));
-        // потолок
-        _platforms.Add(new Rectangle(0, 0, 800, 20)); 
+        LoadLevel(_currentLevel);
 
         base.Initialize();
     }
@@ -478,6 +598,17 @@ public class Game1 : Game
 
             _previousMouseState = mouse;
             _previousKeyboardState = keyboard;
+
+        if (PlayerBounds.Intersects(_exit))
+        {
+            _currentLevel++;
+
+            if (_currentLevel > 2)
+                _currentLevel = 1;
+
+            LoadLevel(_currentLevel);
+        }
+
         base.Update(gameTime);
     }
 
@@ -486,6 +617,11 @@ public class Game1 : Game
         GraphicsDevice.Clear(Color.White);
 
         _spriteBatch.Begin();
+
+        foreach (var block in _backgroundBlocks)
+        {
+            _spriteBatch.Draw(_pixel, block, Color.DarkGray);
+        }
 
         foreach (var platform in _platforms)
         {
@@ -501,6 +637,8 @@ public class Game1 : Game
         {
             _spriteBatch.Draw(_pixel, _orangePortal.Bounds, Color.OrangeRed);
         }
+
+        _spriteBatch.Draw(_pixel, _exit, Color.Green);
 
         _spriteBatch.Draw(_pixel, PlayerBounds, Color.Orange);
 
