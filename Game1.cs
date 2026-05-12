@@ -15,6 +15,8 @@ public class Game1 : Game
     private Texture2D _pixel;
     private List<Rectangle> _platforms = new List<Rectangle>();
     private Rectangle _exit;
+    private List<Rectangle> _spikes = new List<Rectangle>();
+    private List<Rectangle> _noPortalSurfaces = new List<Rectangle>();
 
     #region Движениеигрока
     private Vector2 _playerPosition = new Vector2(100, 100);
@@ -117,13 +119,29 @@ public class Game1 : Game
         {
             Vector2 currentPoint = playerCenter + direction * distance;
             Point checkPoint = new Point((int)currentPoint.X, (int)currentPoint.Y);
-            if (PointInsideBackgroundBlock(checkPoint))
-                return;
 
-            foreach (var platform in _platforms)
-            {
-                if (!platform.Contains(checkPoint))
+                if (PointInsideBackgroundBlock(checkPoint))
+                    return;
+
+                int hitIndex = -1;
+
+                for (int i = 0; i < _platforms.Count; i++)
+                {
+                    if (_platforms[i].Contains(checkPoint))
+                    {
+                        hitIndex = i;
+                        break;
+                    }
+                }
+
+                if (hitIndex == -1)
                     continue;
+
+                if (_hasMovingSpikeTrap &&
+                    (hitIndex == _movingTrapPlatformIndex || hitIndex == _movingTrapSupportIndex))
+                    return;
+
+                Rectangle platform = _platforms[hitIndex];
 
                 bool isWall = platform.Height > platform.Width;
                 Rectangle newPortal;
@@ -180,7 +198,6 @@ public class Game1 : Game
                     newPortal = new Rectangle(portalX, portalY, PortalHeight, PortalWidth);
                 }
 
-                // проверяю что портал не висит на самом краю платформы
                 if (isWall)
                 {
                     if (newPortal.Top <= platform.Top || newPortal.Bottom >= platform.Bottom)
@@ -194,7 +211,6 @@ public class Game1 : Game
 
                 if (PortalOverlapsOtherPlatforms(newPortal, platform))
                     continue;
-
 
                 const int magnetDistance = 5;
 
@@ -231,7 +247,117 @@ public class Game1 : Game
                     _orangePortal = portal;
 
                 return;
-            }
+        }
+    }
+    #endregion
+
+    #region ПлатформаСшипами
+
+    private bool _hasMovingSpikeTrap = false;
+
+    private int _movingTrapPlatformIndex;
+    private int _movingTrapSupportIndex;
+    private int _movingTrapSpikeStartIndex;
+    private int _movingTrapSpikeCount;
+
+    private float _movingTrapY;
+    private int _movingTrapDirection = 1;
+
+    private int _trapX;
+    private int _trapWidth;
+    private int _trapHeight;
+    private int _trapSupportX;
+    private int _trapSupportWidth;
+    private int _trapTopY;
+    private int _trapBottomY;
+
+    private const float TrapSpeed = 45f;
+
+    private void AddMovingSpikeTrap(
+    int x,
+    int y,
+    int width,
+    int height,
+    int supportX,
+    int supportWidth,
+    int topY,
+    int bottomY)
+    {
+        _hasMovingSpikeTrap = true;
+
+        _trapX = x;
+        _trapWidth = width;
+        _trapHeight = height;
+        _trapSupportX = supportX;
+        _trapSupportWidth = supportWidth;
+        _trapTopY = topY;
+        _trapBottomY = bottomY;
+
+        _movingTrapY = y;
+        _movingTrapDirection = 1;
+
+        _movingTrapPlatformIndex = _platforms.Count;
+        _platforms.Add(new Rectangle(x, y, width, height));
+
+        _movingTrapSupportIndex = _platforms.Count;
+        _platforms.Add(new Rectangle(supportX, 40, supportWidth, y - 40));
+
+        _noPortalSurfaces.Add(_platforms[_movingTrapPlatformIndex]);
+        _noPortalSurfaces.Add(_platforms[_movingTrapSupportIndex]);
+
+        _movingTrapSpikeStartIndex = _spikes.Count;
+        _movingTrapSpikeCount = 0;
+
+        for (int spikeX = x + 20; spikeX < x + width - 20; spikeX += 30)
+        {
+            _spikes.Add(new Rectangle(spikeX, y + height, 20, 40));
+            _movingTrapSpikeCount++;
+        }
+    }
+
+    private void UpdateMovingSpikeTrap(float deltaTime)
+    {
+        if (!_hasMovingSpikeTrap)
+            return;
+
+        _movingTrapY += _movingTrapDirection * TrapSpeed * deltaTime;
+
+        if (_movingTrapY >= _trapBottomY)
+        {
+            _movingTrapY = _trapBottomY;
+            _movingTrapDirection = -1;
+        }
+
+        if (_movingTrapY <= _trapTopY)
+        {
+            _movingTrapY = _trapTopY;
+            _movingTrapDirection = 1;
+        }
+
+        _platforms[_movingTrapPlatformIndex] = new Rectangle(
+            _trapX,
+            (int)_movingTrapY,
+            _trapWidth,
+            _trapHeight);
+            _noPortalSurfaces.Clear();
+            _noPortalSurfaces.Add(_platforms[_movingTrapPlatformIndex]);
+            _noPortalSurfaces.Add(_platforms[_movingTrapSupportIndex]);
+
+        _platforms[_movingTrapSupportIndex] = new Rectangle(
+            _trapSupportX,
+            40,
+            _trapSupportWidth,
+            (int)_movingTrapY - 40);
+
+        for (int i = 0; i < _movingTrapSpikeCount; i++)
+        {
+            int spikeX = _trapX + 20 + i * 30;
+
+            _spikes[_movingTrapSpikeStartIndex + i] = new Rectangle(
+                spikeX,
+                (int)_movingTrapY + _trapHeight,
+                20,
+                40);
         }
     }
     #endregion
@@ -303,6 +429,9 @@ public class Game1 : Game
     {
         _platforms.Clear();
         _backgroundBlocks.Clear();
+        _spikes.Clear();
+        _hasMovingSpikeTrap = false;
+        _noPortalSurfaces.Clear();
 
         _bluePortal = null;
         _orangePortal = null;
@@ -372,6 +501,36 @@ public class Game1 : Game
 
 
         }
+        else if (levelNumber == 3)
+        {
+            _playerPosition = new Vector2(120, 470);
+            _playerVelocity = Vector2.Zero;
+
+            _exit = new Rectangle(1450, 410, 50, 100);
+
+            // внешняя комната
+            _platforms.Add(new Rectangle(0, 0, 40, 900));      // левая стена
+            _platforms.Add(new Rectangle(1560, 0, 40, 900));   // правая стена
+            _platforms.Add(new Rectangle(0, 0, 1600, 40));     // потолок
+
+            // ВАЖНО: общего нижнего пола НЕТ, чтобы была настоящая пропасть
+
+            _platforms.Add(new Rectangle(40, 510, 600, 100));
+            _platforms.Add(new Rectangle(1160, 510, 400, 100));
+
+            _backgroundBlocks.Add(new Rectangle(40, 530, 600, 60));
+            _backgroundBlocks.Add(new Rectangle(1160, 530, 400, 60));
+
+            AddMovingSpikeTrap(
+                x: 160,
+                y: 220,
+                width: 460,
+                height: 40,
+                supportX: 360,
+                supportWidth: 40,
+                topY: 220,
+                bottomY: 420);
+        }
 
         _playerVelocity = Vector2.Zero;
     }
@@ -412,6 +571,7 @@ public class Game1 : Game
         }
 
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        UpdateMovingSpikeTrap(deltaTime);
 
         if (_portalExitTimer > 0)
             _portalExitTimer -= deltaTime;
@@ -603,10 +763,26 @@ public class Game1 : Game
         {
             _currentLevel++;
 
-            if (_currentLevel > 2)
+            if (_currentLevel > 3)
                 _currentLevel = 1;
 
             LoadLevel(_currentLevel);
+        }
+
+        foreach (var spike in _spikes)
+        {
+            if (PlayerBounds.Intersects(spike))
+            {
+                LoadLevel(_currentLevel);
+                return;
+            }
+        }
+
+        // если упал в пропасть
+        if (_playerPosition.Y > 950)
+        {
+            LoadLevel(_currentLevel);
+            return;
         }
 
         base.Update(gameTime);
@@ -636,6 +812,11 @@ public class Game1 : Game
         if (_orangePortal != null)
         {
             _spriteBatch.Draw(_pixel, _orangePortal.Bounds, Color.OrangeRed);
+        }
+
+        foreach (var spike in _spikes)
+        {
+            _spriteBatch.Draw(_pixel, spike, Color.Red);
         }
 
         _spriteBatch.Draw(_pixel, _exit, Color.Green);
