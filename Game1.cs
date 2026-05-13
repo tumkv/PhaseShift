@@ -18,7 +18,14 @@ public class Game1 : Game
     private List<Rectangle> _spikes = new List<Rectangle>();
     private List<Rectangle> _noPortalSurfaces = new List<Rectangle>();
 
-    #region Движениеигрока
+    private SpriteFont _font;
+
+    private bool _levelCompletedScreen = false;
+    private int _completedLevelNumber = 1;
+    private float _levelCompleteAlpha = 0f;
+    private const float LevelCompleteFadeSpeed = 2f;
+
+    #region ЛогикаПерсонажа
     private Vector2 _playerPosition = new Vector2(100, 100);
     private Vector2 _playerVelocity = Vector2.Zero;
 
@@ -35,6 +42,23 @@ public class Game1 : Game
     private const float Friction = 0.4f;
     private const float AirControl = 0.15f;
     private const float MaxFallSpeed = 16f;
+
+
+    // смерть
+    private bool _isFading = false;
+    private bool _restartAfterFade = false;
+    private float _fadeAlpha = 0f;
+    private const float FadeSpeed = 2.5f;
+
+    private void Die()
+    {
+        if (_isFading)
+            return;
+
+        _isFading = true;
+        _restartAfterFade = true;
+        _fadeAlpha = 0f;
+    }
 
 
     private Rectangle PlayerBounds =>
@@ -362,13 +386,6 @@ public class Game1 : Game
     }
     #endregion
 
-    public Game1()
-    {
-        _graphics = new GraphicsDeviceManager(this);
-        Content.RootDirectory = "Content";
-        IsMouseVisible = true;
-    }
-
     #region Логикавыбросапорталов
     private Vector2 GetExitPosition(Portal portal)
     {
@@ -536,6 +553,14 @@ public class Game1 : Game
     }
     #endregion
 
+
+    public Game1()
+    {
+        _graphics = new GraphicsDeviceManager(this);
+        Content.RootDirectory = "Content";
+        IsMouseVisible = true;
+    }
+
     protected override void Initialize()
     {
         _graphics.PreferredBackBufferWidth = 1600;
@@ -553,12 +578,41 @@ public class Game1 : Game
 
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
+        _font = Content.Load<SpriteFont>("DefaultFont");
     }
 
     protected override void Update(GameTime gameTime)
     {
         var keyboard = Keyboard.GetState();
         var mouse = Mouse.GetState();
+
+        float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+        if (_levelCompletedScreen)
+        {
+            _levelCompleteAlpha += LevelCompleteFadeSpeed * deltaTime;
+
+            if (_levelCompleteAlpha > 1f)
+                _levelCompleteAlpha = 1f;
+
+            if (_levelCompleteAlpha >= 1f &&
+                (keyboard.GetPressedKeys().Length > 0 ||
+                 mouse.LeftButton == ButtonState.Pressed ||
+                 mouse.RightButton == ButtonState.Pressed))
+            {
+                _currentLevel++;
+
+                if (_currentLevel > 3)
+                    _currentLevel = 1;
+
+                LoadLevel(_currentLevel);
+                _levelCompletedScreen = false;
+            }
+
+            _previousKeyboardState = keyboard;
+            _previousMouseState = mouse;
+            return;
+        }
 
         if (keyboard.IsKeyDown(Keys.R) &&
     !_previousKeyboardState.IsKeyDown(Keys.R))
@@ -570,7 +624,6 @@ public class Game1 : Game
             _sameDirectionPortalSpeed = 0f;
         }
 
-        float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
         UpdateMovingSpikeTrap(deltaTime);
 
         if (_portalExitTimer > 0)
@@ -579,6 +632,32 @@ public class Game1 : Game
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
             keyboard.IsKeyDown(Keys.Escape))
             Exit();
+
+        // затемнение экрана при смерти
+        if (_isFading)
+        {
+            _fadeAlpha += FadeSpeed * deltaTime;
+
+            if (_fadeAlpha >= 1f)
+            {
+                _fadeAlpha = 1f;
+
+                if (_restartAfterFade)
+                {
+                    LoadLevel(_currentLevel);
+                    _restartAfterFade = false;
+                }
+
+                _isFading = false;
+            }
+        }
+        else if (_fadeAlpha > 0f)
+        {
+            _fadeAlpha -= FadeSpeed * deltaTime;
+
+            if (_fadeAlpha < 0f)
+                _fadeAlpha = 0f;
+        }
 
         // движение влево / вправо
         float targetSpeed = 0f;
@@ -761,19 +840,22 @@ public class Game1 : Game
 
         if (PlayerBounds.Intersects(_exit))
         {
-            _currentLevel++;
+            _completedLevelNumber = _currentLevel;
+            _levelCompletedScreen = true;
+            _levelCompleteAlpha = 0f;
 
-            if (_currentLevel > 3)
-                _currentLevel = 1;
+            _bluePortal = null;
+            _orangePortal = null;
+            _playerVelocity = Vector2.Zero;
 
-            LoadLevel(_currentLevel);
+            return;
         }
 
         foreach (var spike in _spikes)
         {
             if (PlayerBounds.Intersects(spike))
             {
-                LoadLevel(_currentLevel);
+                Die();
                 return;
             }
         }
@@ -781,7 +863,7 @@ public class Game1 : Game
         // если упал в пропасть
         if (_playerPosition.Y > 950)
         {
-            LoadLevel(_currentLevel);
+            Die();
             return;
         }
 
@@ -793,6 +875,36 @@ public class Game1 : Game
         GraphicsDevice.Clear(Color.White);
 
         _spriteBatch.Begin();
+
+        if (_levelCompletedScreen)
+        {
+            GraphicsDevice.Clear(Color.Black);
+
+            Color textColor = Color.White * _levelCompleteAlpha;
+            Color fadeWhite = Color.White * _levelCompleteAlpha;
+            Color fadeBlack = Color.Black * _levelCompleteAlpha;
+
+            _spriteBatch.DrawString(
+                _font,
+                $"LEVEL {_completedLevelNumber} COMPLETED",
+                new Vector2(40, 40),
+                textColor);
+
+            string continueText = "Press any key to continue";
+            Vector2 textSize = _font.MeasureString(continueText);
+
+            _spriteBatch.DrawString(
+                _font,
+                continueText,
+                new Vector2(
+                    (GraphicsDevice.Viewport.Width - textSize.X) / 2,
+                    GraphicsDevice.Viewport.Height - 120),
+                textColor);
+
+            _spriteBatch.End();
+            base.Draw(gameTime);
+            return;
+        }
 
         foreach (var block in _backgroundBlocks)
         {
@@ -822,6 +934,14 @@ public class Game1 : Game
         _spriteBatch.Draw(_pixel, _exit, Color.Green);
 
         _spriteBatch.Draw(_pixel, PlayerBounds, Color.Orange);
+
+        if (_fadeAlpha > 0f)
+        {
+            _spriteBatch.Draw(
+                _pixel,
+                new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height),
+                Color.Black * _fadeAlpha);
+        }
 
         _spriteBatch.End();
 
