@@ -17,9 +17,19 @@ public class Game1 : Game
     private Rectangle _exit;
     private List<Rectangle> _spikes = new List<Rectangle>();
     private List<Rectangle> _noPortalSurfaces = new List<Rectangle>();
+    private List<Rectangle> _electricZones = new List<Rectangle>();
 
+    // электро-пол
+    private bool _electricActive = false;
+    private float _electricTimer = 0f;
+
+    private const float ElectricOnTime = 2f;
+    private const float ElectricOffTime = 4f;
+
+    // шрифт
     private SpriteFont _font;
 
+    // левелкомплит экран
     private bool _levelCompletedScreen = false;
     private int _completedLevelNumber = 1;
     private float _levelCompleteAlpha = 0f;
@@ -112,6 +122,18 @@ public class Game1 : Game
 
         return false;
     }
+
+    private bool PortalTouchesElectricZone(Rectangle portal)
+    {
+        foreach (var electricZone in _electricZones)
+        {
+            if (portal.Intersects(electricZone))
+                return true;
+        }
+
+        return false;
+    }
+
 
     private class Portal
     {
@@ -222,11 +244,14 @@ public class Game1 : Game
                     newPortal = new Rectangle(portalX, portalY, PortalHeight, PortalWidth);
                 }
 
+                if (PortalTouchesElectricZone(newPortal))
+                    continue;
+
                 if (isWall)
                 {
                     if (newPortal.Top <= platform.Top || newPortal.Bottom >= platform.Bottom)
                         continue;
-                }
+                }   
                 else
                 {
                     if (newPortal.Left <= platform.Left || newPortal.Right >= platform.Right)
@@ -427,7 +452,7 @@ public class Game1 : Game
         }
         else
         {
-            // если тип перехода другой, сбрасываем запомненную скорость
+            // если тип перехода другой, сбрасываю запомненную скорость
             _sameDirectionPortalSpeed = 0f;
         }
 
@@ -440,7 +465,7 @@ public class Game1 : Game
 
     #region Уровни
     private List<Rectangle> _backgroundBlocks = new List<Rectangle>();
-    private int _currentLevel = 1;
+    private int _currentLevel = 4;
 
     private void LoadLevel(int levelNumber)
     {
@@ -449,6 +474,9 @@ public class Game1 : Game
         _spikes.Clear();
         _hasMovingSpikeTrap = false;
         _noPortalSurfaces.Clear();
+        _electricZones.Clear();
+        _electricActive = false;
+        _electricTimer = 0f;
 
         _bluePortal = null;
         _orangePortal = null;
@@ -530,8 +558,6 @@ public class Game1 : Game
             _platforms.Add(new Rectangle(1560, 0, 40, 900));   // правая стена
             _platforms.Add(new Rectangle(0, 0, 1600, 40));     // потолок
 
-            // ВАЖНО: общего нижнего пола НЕТ, чтобы была настоящая пропасть
-
             _platforms.Add(new Rectangle(40, 510, 600, 100));
             _platforms.Add(new Rectangle(1160, 510, 400, 100));
 
@@ -547,6 +573,46 @@ public class Game1 : Game
                 supportWidth: 40,
                 topY: 220,
                 bottomY: 420);
+        }
+        else if (levelNumber == 4)
+        {
+            _playerPosition = new Vector2(120, 760);
+            _playerVelocity = Vector2.Zero;
+
+            // выход
+            _exit = new Rectangle(1450, 660, 50, 100);
+
+            // границы комнаты
+            _platforms.Add(new Rectangle(0, 0, 1600, 40));     // потолок
+            _platforms.Add(new Rectangle(0, 760, 1600, 200));   // нижний пол
+            _platforms.Add(new Rectangle(0, 0, 40, 900));      // левая стена
+            _platforms.Add(new Rectangle(1560, 0, 40, 900));   // правая стена
+
+            // левый и правый пол на одном уровне
+            _platforms.Add(new Rectangle(40, 760, 260, 100));    // левая платформа
+            _platforms.Add(new Rectangle(1300, 760, 260, 100));  // правая платформа
+
+            // верхний блок туннеля
+            _platforms.Add(new Rectangle(360, 300, 760, 40));  // нижняя часть верхнего блока
+            _platforms.Add(new Rectangle(360, 0, 40, 300));  // левая стена верхнего блока
+            _platforms.Add(new Rectangle(1080, 0, 40, 300)); // правая стена верхнего блока
+            
+
+            _backgroundBlocks.Add(new Rectangle(400, 0, 680, 300));
+
+            // нижний блок туннеля
+            _platforms.Add(new Rectangle(360, 640, 760, 40));  // верхняя часть нижнего блока
+            _platforms.Add(new Rectangle(360, 640, 40, 220));  // левая стена нижнего блока
+            _platforms.Add(new Rectangle(1080, 640, 40, 220)); // правая стена нижнего блока
+
+            _backgroundBlocks.Add(new Rectangle(400, 680, 680, 180));
+
+            // электрические зоны туннеля
+            _electricZones.Add(new Rectangle(400, 340, 680, 30)); // электрический потолок
+            _electricZones.Add(new Rectangle(400, 610, 680, 30)); // электрический пол
+
+            _platforms.Add(new Rectangle(300, 640, 60, 40));
+            _platforms.Add(new Rectangle(1120, 640, 60, 40));
         }
 
         _playerVelocity = Vector2.Zero;
@@ -602,7 +668,7 @@ public class Game1 : Game
             {
                 _currentLevel++;
 
-                if (_currentLevel > 3)
+                if (_currentLevel > 4)
                     _currentLevel = 1;
 
                 LoadLevel(_currentLevel);
@@ -632,6 +698,27 @@ public class Game1 : Game
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
             keyboard.IsKeyDown(Keys.Escape))
             Exit();
+
+
+        // таймер электричества
+        _electricTimer += deltaTime;
+
+        if (_electricActive)
+        {
+            if (_electricTimer >= ElectricOnTime)
+            {
+                _electricTimer = 0f;
+                _electricActive = false;
+            }
+        }
+        else
+        {
+            if (_electricTimer >= ElectricOffTime)
+            {
+                _electricTimer = 0f;
+                _electricActive = true;
+            }
+        }
 
         // затемнение экрана при смерти
         if (_isFading)
@@ -838,6 +925,7 @@ public class Game1 : Game
             _previousMouseState = mouse;
             _previousKeyboardState = keyboard;
 
+        // выход
         if (PlayerBounds.Intersects(_exit))
         {
             _completedLevelNumber = _currentLevel;
@@ -851,12 +939,26 @@ public class Game1 : Game
             return;
         }
 
+        // смерть от шипов
         foreach (var spike in _spikes)
         {
             if (PlayerBounds.Intersects(spike))
             {
                 Die();
                 return;
+            }
+        }
+
+        // смерть от электричества
+        if (_electricActive)
+        {
+            foreach (var electricZone in _electricZones)
+            {
+                if (PlayerBounds.Intersects(electricZone))
+                {
+                    Die();
+                    return;
+                }
             }
         }
 
@@ -914,6 +1016,15 @@ public class Game1 : Game
         foreach (var platform in _platforms)
         {
             _spriteBatch.Draw(_pixel, platform, Color.Gray);
+        }
+
+        foreach (var electricZone in _electricZones)
+        {
+            Color electricColor = _electricActive
+                ? Color.Cyan
+                : Color.DarkSlateGray;
+
+            _spriteBatch.Draw(_pixel, electricZone, electricColor);
         }
 
         if (_bluePortal != null)
