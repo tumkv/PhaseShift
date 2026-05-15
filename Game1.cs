@@ -60,6 +60,29 @@ public class Game1 : Game
     private float _fadeAlpha = 0f;
     private const float FadeSpeed = 2.5f;
 
+    // куб
+    private Vector2 _cubePosition = new Vector2(250, 720);
+    private Vector2 _cubeVelocity = Vector2.Zero;
+
+    private const int CubeSize = 40;
+    private const float CubeHoldDistance = 90f;
+    private const float CubeFollowSpeed = 0.25f;
+
+    private bool _isHoldingCube = false;
+    private bool _hasCube = false;
+    private bool _isCubeTeleporting = false;
+
+    // кнопка
+
+    private Rectangle _button;
+    private Rectangle _door;
+    private bool _hasButtonDoorLevel = false;
+    private bool _doorOpen = false;
+    private int _doorPlatformIndex = -1;
+
+    private Rectangle CubeBounds =>
+        new Rectangle((int)_cubePosition.X, (int)_cubePosition.Y, CubeSize, CubeSize);
+
     private void Die()
     {
         if (_isFading)
@@ -300,6 +323,143 @@ public class Game1 : Game
     }
     #endregion
 
+    #region КубИкнопка
+    private void UpdateCube(KeyboardState keyboard, MouseState mouse)
+    {
+        bool ePressed = keyboard.IsKeyDown(Keys.E) &&
+                        !_previousKeyboardState.IsKeyDown(Keys.E);
+
+        Vector2 playerCenter = new Vector2(
+            _playerPosition.X + PlayerWidth / 2,
+            _playerPosition.Y + PlayerHeight / 2);
+
+        Vector2 cubeCenter = new Vector2(
+            _cubePosition.X + CubeSize / 2,
+            _cubePosition.Y + CubeSize / 2);
+
+        float distanceToCube = Vector2.Distance(playerCenter, cubeCenter);
+
+        if (ePressed)
+        {
+            if (_isHoldingCube)
+            {
+                _isHoldingCube = false;
+                _cubeVelocity = Vector2.Zero;
+            }
+            else if (distanceToCube < 100f)
+            {
+                _isHoldingCube = true;
+                _cubeVelocity = Vector2.Zero;
+            }
+        }
+
+        if (_isHoldingCube)
+        {
+            Vector2 mousePosition = new Vector2(mouse.X, mouse.Y);
+            Vector2 direction = mousePosition - playerCenter;
+
+            if (direction != Vector2.Zero)
+                direction.Normalize();
+
+            Vector2 targetPosition = playerCenter + direction * CubeHoldDistance;
+            targetPosition -= new Vector2(CubeSize / 2, CubeSize / 2);
+
+            _cubePosition = Vector2.Lerp(
+                _cubePosition,
+                targetPosition,
+                CubeFollowSpeed);
+
+            return;
+        }
+
+        _cubeVelocity.Y += Gravity;
+
+        if (_cubeVelocity.Y > MaxFallSpeed)
+            _cubeVelocity.Y = MaxFallSpeed;
+
+        _cubePosition.Y += _cubeVelocity.Y;
+
+        foreach (var platform in _platforms)
+        {
+            if (CubeBounds.Intersects(platform))
+            {
+                if (_cubeVelocity.Y > 0)
+                {
+                    _cubePosition.Y = platform.Top - CubeSize;
+                    _cubeVelocity.Y = 0;
+                }
+            }
+        }
+    }
+
+    private void UpdateButtonDoor()
+    {
+        if (!_hasButtonDoorLevel)
+            return;
+
+        bool buttonPressed =
+            PlayerBounds.Intersects(_button) ||
+            CubeBounds.Intersects(_button);
+
+        _doorOpen = buttonPressed;
+
+        if (_doorPlatformIndex >= 0)
+        {
+            if (_doorOpen)
+                _platforms[_doorPlatformIndex] = Rectangle.Empty;
+            else
+                _platforms[_doorPlatformIndex] = _door;
+        }
+    }
+
+
+    #endregion
+
+    #region ТелепортацияКуба
+    private Vector2 GetCubeExitPosition(Portal portal)
+    {
+        Vector2 center = new Vector2(
+            portal.Bounds.Center.X - CubeSize / 2,
+            portal.Bounds.Center.Y - CubeSize / 2);
+
+        return center + portal.ExitDirection * 50f;
+    }
+
+    private void TeleportCube()
+    {
+        if (!_hasCube || _isHoldingCube)
+            return;
+
+        if (_bluePortal == null || _orangePortal == null)
+        {
+            _isCubeTeleporting = false;
+            return;
+        }
+
+        if (!_isCubeTeleporting)
+        {
+            if (CubeBounds.Intersects(_bluePortal.Bounds))
+            {
+                _cubePosition = GetCubeExitPosition(_orangePortal);
+                _cubeVelocity = _orangePortal.ExitDirection * Math.Max(_cubeVelocity.Length(), 4f);
+                _isCubeTeleporting = true;
+            }
+            else if (CubeBounds.Intersects(_orangePortal.Bounds))
+            {
+                _cubePosition = GetCubeExitPosition(_bluePortal);
+                _cubeVelocity = _bluePortal.ExitDirection * Math.Max(_cubeVelocity.Length(), 4f);
+                _isCubeTeleporting = true;
+            }
+        }
+
+        if (!CubeBounds.Intersects(_bluePortal.Bounds) &&
+            !CubeBounds.Intersects(_orangePortal.Bounds))
+        {
+            _isCubeTeleporting = false;
+        }
+    }
+    #endregion
+
     #region ПлатформаСшипами
 
     private bool _hasMovingSpikeTrap = false;
@@ -465,7 +625,7 @@ public class Game1 : Game
 
     #region Уровни
     private List<Rectangle> _backgroundBlocks = new List<Rectangle>();
-    private int _currentLevel = 4;
+    private int _currentLevel = 3;
 
     private void LoadLevel(int levelNumber)
     {
@@ -477,6 +637,13 @@ public class Game1 : Game
         _electricZones.Clear();
         _electricActive = false;
         _electricTimer = 0f;
+        _isHoldingCube = false;
+        _cubeVelocity = Vector2.Zero;
+        _hasButtonDoorLevel = false;
+        _doorOpen = false;
+        _doorPlatformIndex = -1;
+        _hasCube = false;
+        _isCubeTeleporting = false;
 
         _bluePortal = null;
         _orangePortal = null;
@@ -582,6 +749,8 @@ public class Game1 : Game
             // выход
             _exit = new Rectangle(1450, 660, 50, 100);
 
+            _cubePosition = new Vector2(250, 720);
+
             // границы комнаты
             _platforms.Add(new Rectangle(0, 0, 1600, 40));     // потолок
             _platforms.Add(new Rectangle(0, 760, 1600, 200));   // нижний пол
@@ -613,6 +782,66 @@ public class Game1 : Game
 
             _platforms.Add(new Rectangle(300, 640, 60, 40));
             _platforms.Add(new Rectangle(1120, 640, 60, 40));
+        }
+        else if (levelNumber == 5)
+        {
+            _hasButtonDoorLevel = true;
+            _hasCube = true;
+
+            _playerPosition = new Vector2(120, 760);
+            _playerVelocity = Vector2.Zero;
+
+            _cubePosition = new Vector2(300, 760);
+            _cubeVelocity = Vector2.Zero;
+
+            // выход поднят на уровень выше
+            _exit = new Rectangle(1450, 400, 50, 100);
+
+            // границы комнаты
+            _platforms.Add(new Rectangle(0, 0, 1600, 40));      // потолок
+            _platforms.Add(new Rectangle(0, 860, 1600, 40));    // пол
+            _platforms.Add(new Rectangle(0, 0, 40, 900));       // левая стена
+            _platforms.Add(new Rectangle(1560, 0, 40, 900));    // правая стена
+
+            // нижняя стартовая зона
+            _platforms.Add(new Rectangle(40, 800, 480, 60));
+
+            // стенка справа от нижней стартовой зоны
+            _platforms.Add(new Rectangle(520, 520, 40, 340));
+
+            // верхняя левая площадка с кнопкой
+            _platforms.Add(new Rectangle(40, 300, 520, 60));
+
+            // платформа над кубом/переходная полка
+            _platforms.Add(new Rectangle(320, 500, 250, 90));
+
+            // верхний блок над этой полкой
+            _platforms.Add(new Rectangle(360, 180, 200, 120));
+            _backgroundBlocks.Add(new Rectangle(380, 200, 140, 100));
+
+            // центральная дверь
+            _door = new Rectangle(720, 40, 50, 460);
+            _doorPlatformIndex = _platforms.Count;
+            _platforms.Add(_door);
+
+            // верхний правый потолочный блок
+            _platforms.Add(new Rectangle(720, 40, 840, 60));
+
+            // длинная центральная платформа справа
+            _platforms.Add(new Rectangle(560, 500, 1000, 60));
+
+            // большой нижний серый массив справа
+            _platforms.Add(new Rectangle(560, 560, 1000, 300));
+            _backgroundBlocks.Add(new Rectangle(600, 600, 920, 260));
+
+            // верхняя правая площадка с выходом
+            _platforms.Add(new Rectangle(1320, 500, 240, 60));
+
+            // заливка под выходом, чтобы снизу не было пустой комнаты
+            _backgroundBlocks.Add(new Rectangle(1320, 560, 240, 300));
+
+            // кнопка на верхней левой площадке
+            _button = new Rectangle(180, 280, 100, 20);
         }
 
         _playerVelocity = Vector2.Zero;
@@ -654,6 +883,7 @@ public class Game1 : Game
 
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
+        // финишный экран
         if (_levelCompletedScreen)
         {
             _levelCompleteAlpha += LevelCompleteFadeSpeed * deltaTime;
@@ -668,7 +898,7 @@ public class Game1 : Game
             {
                 _currentLevel++;
 
-                if (_currentLevel > 4)
+                if (_currentLevel > 5)
                     _currentLevel = 1;
 
                 LoadLevel(_currentLevel);
@@ -680,6 +910,7 @@ public class Game1 : Game
             return;
         }
 
+        // сброс порталов
         if (keyboard.IsKeyDown(Keys.R) &&
     !_previousKeyboardState.IsKeyDown(Keys.R))
         {
@@ -690,6 +921,7 @@ public class Game1 : Game
             _sameDirectionPortalSpeed = 0f;
         }
 
+        // шипы
         UpdateMovingSpikeTrap(deltaTime);
 
         if (_portalExitTimer > 0)
@@ -892,6 +1124,14 @@ public class Game1 : Game
             }
         }
 
+        if (_hasCube)
+        {
+            UpdateCube(keyboard, mouse);
+            TeleportCube();
+        }
+        UpdateButtonDoor();
+
+
         // телепортация
         if (_bluePortal != null && _orangePortal != null)
         {
@@ -924,6 +1164,7 @@ public class Game1 : Game
 
             _previousMouseState = mouse;
             _previousKeyboardState = keyboard;
+
 
         // выход
         if (PlayerBounds.Intersects(_exit))
@@ -1018,6 +1259,15 @@ public class Game1 : Game
             _spriteBatch.Draw(_pixel, platform, Color.Gray);
         }
 
+        if (_hasButtonDoorLevel)
+        {
+            Color buttonColor = _doorOpen ? Color.LimeGreen : Color.Red;
+            _spriteBatch.Draw(_pixel, _button, buttonColor);
+
+            if (!_doorOpen)
+                _spriteBatch.Draw(_pixel, _door, Color.DarkSlateGray);
+        }
+
         foreach (var electricZone in _electricZones)
         {
             Color electricColor = _electricActive
@@ -1043,6 +1293,20 @@ public class Game1 : Game
         }
 
         _spriteBatch.Draw(_pixel, _exit, Color.Green);
+
+        if (_hasCube)
+        {
+            Rectangle outerCube = CubeBounds;
+
+            Rectangle innerCube = new Rectangle(
+                outerCube.X + 6,
+                outerCube.Y + 6,
+                outerCube.Width - 12,
+                outerCube.Height - 12);
+
+            _spriteBatch.Draw(_pixel, outerCube, Color.DarkSlateGray);
+            _spriteBatch.Draw(_pixel, innerCube, Color.Beige);
+        }
 
         _spriteBatch.Draw(_pixel, PlayerBounds, Color.Orange);
 
