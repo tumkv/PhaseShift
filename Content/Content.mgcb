@@ -17,3 +17,8 @@
 /importer:FontDescriptionImporter
 /processor:FontDescriptionProcessor
 /build:DefaultFont.spritefont
+
+#begin menu_background.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:menu_background.png

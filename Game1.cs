@@ -35,6 +35,64 @@ public class Game1 : Game
     private float _levelCompleteAlpha = 0f;
     private const float LevelCompleteFadeSpeed = 2f;
 
+    #region ГлавноеМеню
+    // фон меню
+    private Texture2D _menuBackground;
+
+    // состояния игры
+    private enum GameState
+    {
+        MainMenu,
+        LevelSelect,
+        Playing
+    }
+
+    private GameState _gameState = GameState.MainMenu;
+
+    // кнопки меню
+    private Rectangle _newGameButton;
+    private Rectangle _continueButton;
+    private Rectangle _exitButton;
+
+    // кнопки выбора уровней
+    private List<Rectangle> _levelButtons = new List<Rectangle>();
+
+    // hover
+    private bool _hoverNewGame;
+    private bool _hoverContinue;
+    private bool _hoverExit;
+
+    private void DrawMenuButton(Rectangle rect, string text, bool hovered)
+    {
+        Color buttonColor = hovered
+            ? Color.Orange
+            : Color.White;
+
+        if (hovered)
+        {
+            Rectangle glow = new Rectangle(
+                rect.X - 10,
+                rect.Y - 10,
+                rect.Width + 20,
+                rect.Height + 20);
+
+            _spriteBatch.Draw(_pixel, glow, Color.Orange * 0.35f);
+        }
+
+        _spriteBatch.Draw(_pixel, rect, buttonColor);
+
+        Vector2 textSize = _font.MeasureString(text);
+
+        _spriteBatch.DrawString(
+            _font,
+            text,
+            new Vector2(
+                rect.Center.X - textSize.X / 2,
+                rect.Center.Y - textSize.Y / 2),
+            Color.Black);
+    }
+    #endregion
+
     #region ЛогикаПерсонажа
     private Vector2 _playerPosition = new Vector2(100, 100);
     private Vector2 _playerVelocity = Vector2.Zero;
@@ -625,7 +683,7 @@ public class Game1 : Game
 
     #region Уровни
     private List<Rectangle> _backgroundBlocks = new List<Rectangle>();
-    private int _currentLevel = 3;
+    private int _currentLevel = 1;
 
     private void LoadLevel(int levelNumber)
     {
@@ -794,7 +852,7 @@ public class Game1 : Game
             _cubePosition = new Vector2(300, 760);
             _cubeVelocity = Vector2.Zero;
 
-            // выход поднят на уровень выше
+            // выход
             _exit = new Rectangle(1450, 400, 50, 100);
 
             // границы комнаты
@@ -812,10 +870,8 @@ public class Game1 : Game
             // верхняя левая площадка с кнопкой
             _platforms.Add(new Rectangle(40, 300, 520, 60));
 
-            // платформа над кубом/переходная полка
+            // платформа над кубом
             _platforms.Add(new Rectangle(320, 500, 250, 90));
-
-            // верхний блок над этой полкой
             _platforms.Add(new Rectangle(360, 180, 200, 120));
             _backgroundBlocks.Add(new Rectangle(380, 200, 140, 100));
 
@@ -829,18 +885,14 @@ public class Game1 : Game
 
             // длинная центральная платформа справа
             _platforms.Add(new Rectangle(560, 500, 1000, 60));
-
-            // большой нижний серый массив справа
             _platforms.Add(new Rectangle(560, 560, 1000, 300));
             _backgroundBlocks.Add(new Rectangle(600, 600, 920, 260));
 
             // верхняя правая площадка с выходом
             _platforms.Add(new Rectangle(1320, 500, 240, 60));
-
-            // заливка под выходом, чтобы снизу не было пустой комнаты
             _backgroundBlocks.Add(new Rectangle(1320, 560, 240, 300));
 
-            // кнопка на верхней левой площадке
+            // кнопка
             _button = new Rectangle(180, 280, 100, 20);
         }
 
@@ -862,7 +914,15 @@ public class Game1 : Game
         _graphics.PreferredBackBufferHeight = 900;
         _graphics.ApplyChanges();
 
-        LoadLevel(_currentLevel);
+        _newGameButton = new Rectangle(120, 300, 320, 70);
+        _continueButton = new Rectangle(120, 400, 320, 70);
+        _exitButton = new Rectangle(120, 500, 320, 70);
+
+        for (int i = 0; i < 5; i++)
+        {
+            _levelButtons.Add(new Rectangle(120 + i * 140, 350, 100, 100));
+        }
+
 
         base.Initialize();
     }
@@ -870,6 +930,7 @@ public class Game1 : Game
     protected override void LoadContent()
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
+        _menuBackground = Content.Load<Texture2D>("menu_background");
 
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
@@ -882,6 +943,68 @@ public class Game1 : Game
         var mouse = Mouse.GetState();
 
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+        // главное меню
+
+        if (_gameState == GameState.MainMenu)
+        {
+            Point mousePoint = mouse.Position;
+
+            _hoverNewGame = _newGameButton.Contains(mousePoint);
+            _hoverContinue = _continueButton.Contains(mousePoint);
+            _hoverExit = _exitButton.Contains(mousePoint);
+
+            if (mouse.LeftButton == ButtonState.Pressed &&
+                _previousMouseState.LeftButton == ButtonState.Released)
+            {
+                if (_hoverNewGame)
+                {
+                    _currentLevel = 1;
+                    LoadLevel(_currentLevel);
+                    _gameState = GameState.Playing;
+                }
+                else if (_hoverContinue)
+                {
+                    _gameState = GameState.LevelSelect;
+                }
+                else if (_hoverExit)
+                {
+                    Exit();
+                }
+            }
+
+            _previousMouseState = mouse;
+            return;
+        }
+
+        // меню выбора уровней
+
+        if (_gameState == GameState.LevelSelect)
+        {
+            Point mousePoint = mouse.Position;
+
+            if (mouse.LeftButton == ButtonState.Pressed &&
+                _previousMouseState.LeftButton == ButtonState.Released)
+            {
+                for (int i = 0; i < _levelButtons.Count; i++)
+                {
+                    if (_levelButtons[i].Contains(mousePoint))
+                    {
+                        _currentLevel = i + 1;
+                        LoadLevel(_currentLevel);
+                        _gameState = GameState.Playing;
+                    }
+                }
+            }
+
+            if (keyboard.IsKeyDown(Keys.Escape))
+            {
+                _gameState = GameState.MainMenu;
+            }
+
+            _previousMouseState = mouse;
+            return;
+        }
 
         // финишный экран
         if (_levelCompletedScreen)
@@ -1218,6 +1341,66 @@ public class Game1 : Game
         GraphicsDevice.Clear(Color.White);
 
         _spriteBatch.Begin();
+
+        if (_gameState == GameState.MainMenu)
+        {
+            _spriteBatch.Draw(
+                _menuBackground,
+                new Rectangle(0, 0, 1600, 900),
+                Color.White);
+
+            DrawMenuButton(_newGameButton, "NEW GAME", _hoverNewGame);
+            DrawMenuButton(_continueButton, "CONTINUE", _hoverContinue);
+            DrawMenuButton(_exitButton, "EXIT", _hoverExit);
+
+            _spriteBatch.End();
+            base.Draw(gameTime);
+            return;
+        }
+
+        if (_gameState == GameState.LevelSelect)
+        {
+            GraphicsDevice.Clear(Color.Black);
+
+            for (int i = 0; i < _levelButtons.Count; i++)
+            {
+                Rectangle button = _levelButtons[i];
+
+                bool hovered = button.Contains(Mouse.GetState().Position);
+
+                Color color = hovered
+                    ? Color.Orange
+                    : Color.White;
+
+                if (hovered)
+                {
+                    Rectangle glow = new Rectangle(
+                        button.X - 8,
+                        button.Y - 8,
+                        button.Width + 16,
+                        button.Height + 16);
+
+                    _spriteBatch.Draw(_pixel, glow, Color.Orange * 0.35f);
+                }
+
+                _spriteBatch.Draw(_pixel, button, color);
+
+                string text = (i + 1).ToString();
+                Vector2 size = _font.MeasureString(text);
+
+                _spriteBatch.DrawString(
+                    _font,
+                    text,
+                    new Vector2(
+                        button.Center.X - size.X / 2,
+                        button.Center.Y - size.Y / 2),
+                    Color.Black);
+            }
+
+            _spriteBatch.End();
+            base.Draw(gameTime);
+            return;
+        }
 
         if (_levelCompletedScreen)
         {
