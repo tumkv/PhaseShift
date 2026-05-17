@@ -381,6 +381,82 @@ public class Game1 : Game
     }
     #endregion
 
+    #region ТекстурыПорталов
+    private Texture2D _bluePortalTexture;
+    private Texture2D _orangePortalTexture;
+    private Texture2D _portalGlowTexture;
+
+    private void DrawPortal(Portal portal, Texture2D texture, Color glowColor)
+    {
+        bool horizontal = portal.Bounds.Width > portal.Bounds.Height;
+
+        float rotation = 0f;
+        SpriteEffects effects = SpriteEffects.None;
+
+        if (!horizontal && portal.ExitDirection.X > 0)
+            effects = SpriteEffects.FlipHorizontally;
+
+        if (horizontal)
+        {
+            rotation = MathHelper.PiOver2;
+
+            if (portal.ExitDirection.Y > 0)
+                effects = SpriteEffects.FlipHorizontally;
+        }
+
+        // глоу
+        Rectangle glowBounds = portal.Bounds;
+        glowBounds.Inflate(3, 2);
+
+        Vector2 glowOrigin = new Vector2(
+        _portalGlowTexture.Width / 2f,
+        _portalGlowTexture.Height / 2f);
+
+        Vector2 glowScale = horizontal
+            ? new Vector2(
+                glowBounds.Height / (float)_portalGlowTexture.Width,
+                glowBounds.Width / (float)_portalGlowTexture.Height)
+            : new Vector2(
+                glowBounds.Width / (float)_portalGlowTexture.Width,
+                glowBounds.Height / (float)_portalGlowTexture.Height);
+
+        _spriteBatch.Draw(
+            _portalGlowTexture,
+            new Vector2(glowBounds.Center.X, glowBounds.Center.Y),
+            null,
+            glowColor * 0.6f,
+            rotation,
+            glowOrigin,
+            glowScale,
+            effects,
+            0f);
+
+        // основа портала
+        Vector2 origin = new Vector2(
+        texture.Width / 2f,
+        texture.Height / 2f);
+
+        Vector2 scale = horizontal
+            ? new Vector2(
+                portal.Bounds.Height / (float)texture.Width,
+                portal.Bounds.Width / (float)texture.Height)
+            : new Vector2(
+                portal.Bounds.Width / (float)texture.Width,
+                portal.Bounds.Height / (float)texture.Height);
+
+        _spriteBatch.Draw(
+            texture,
+            new Vector2(portal.Bounds.Center.X, portal.Bounds.Center.Y),
+            null,
+            glowColor,
+            rotation,
+            origin,
+            scale,
+            effects,
+            0f);
+    }
+    #endregion
+
     #region КубИкнопка
     private void UpdateCube(KeyboardState keyboard, MouseState mouse)
     {
@@ -932,6 +1008,10 @@ public class Game1 : Game
         _spriteBatch = new SpriteBatch(GraphicsDevice);
         _menuBackground = Content.Load<Texture2D>("menu_background");
 
+        _bluePortalTexture = Content.Load<Texture2D>("blue_portal");
+        _orangePortalTexture = Content.Load<Texture2D>("orange_portal");
+        _portalGlowTexture = Content.Load<Texture2D>("portal_glow");
+
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
         _font = Content.Load<SpriteFont>("DefaultFont");
@@ -1462,12 +1542,12 @@ public class Game1 : Game
 
         if (_bluePortal != null)
         {
-            _spriteBatch.Draw(_pixel, _bluePortal.Bounds, Color.Blue);
+            DrawPortal(_bluePortal, _bluePortalTexture, Color.Cyan);
         }
 
         if (_orangePortal != null)
         {
-            _spriteBatch.Draw(_pixel, _orangePortal.Bounds, Color.OrangeRed);
+            DrawPortal(_orangePortal, _orangePortalTexture, Color.Orange);
         }
 
         foreach (var spike in _spikes)

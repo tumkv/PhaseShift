@@ -22,3 +22,18 @@
 /importer:TextureImporter
 /processor:TextureProcessor
 /build:menu_background.png
+
+#begin blue_portal.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:blue_portal.png
+
+#begin orange_portal.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:orange_portal.png
+
+#begin portal_glow.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:portal_glow.png
