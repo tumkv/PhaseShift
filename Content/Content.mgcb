@@ -62,3 +62,8 @@
 /importer:TextureImporter
 /processor:TextureProcessor
 /build:crosshair_both.png
+
+#begin controls.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:controls.png

@@ -42,6 +42,9 @@ public class Game1 : Game
 
     // бэкграунд
     private Texture2D _levelBackground;
+    private Texture2D _controlHintTexture;
+    private Vector2 _controlHintPosition;
+    private bool _showControlHint = false;
 
     // курсор
     private Texture2D _crosshairNoPortals;
@@ -374,15 +377,15 @@ public class Game1 : Game
                 if (PortalTouchesButton(newPortal))
                     return;
 
-            if (isWall)
+                if (isWall)
                 {
                     if (newPortal.Top <= platform.Top || newPortal.Bottom >= platform.Bottom)
-                        continue;
-                }   
+                        return;
+                }
                 else
                 {
                     if (newPortal.Left <= platform.Left || newPortal.Right >= platform.Right)
-                        continue;
+                        return;
                 }
 
                 if (PortalOverlapsOtherPlatforms(newPortal, platform))
@@ -825,6 +828,8 @@ public class Game1 : Game
         _hasCube = false;
         _isCubeTeleporting = false;
 
+        _showControlHint = false;
+
         _bluePortal = null;
         _orangePortal = null;
         _isTeleporting = false;
@@ -834,6 +839,9 @@ public class Game1 : Game
         if (levelNumber == 1)
         {
             _platforms.Clear();
+
+            _controlHintPosition = new Vector2(650, 520);
+            _showControlHint = true;
 
             _playerPosition = new Vector2(120, 760);
             _exit = new Rectangle(1450, 780, 50, 80);
@@ -862,6 +870,7 @@ public class Game1 : Game
         {
             _playerPosition = new Vector2(120, 780);
             _playerVelocity = Vector2.Zero;
+            _showControlHint = false;
 
             _exit = new Rectangle(1480, 770, 50, 90);
 
@@ -897,6 +906,7 @@ public class Game1 : Game
         {
             _playerPosition = new Vector2(120, 470);
             _playerVelocity = Vector2.Zero;
+            _showControlHint = false;
 
             _exit = new Rectangle(1450, 410, 50, 100);
 
@@ -925,6 +935,7 @@ public class Game1 : Game
         {
             _playerPosition = new Vector2(120, 760);
             _playerVelocity = Vector2.Zero;
+            _showControlHint = false;
 
             // выход
             _exit = new Rectangle(1450, 660, 50, 100);
@@ -967,6 +978,7 @@ public class Game1 : Game
         {
             _hasButtonDoorLevel = true;
             _hasCube = true;
+            _showControlHint = false;
 
             _playerPosition = new Vector2(120, 760);
             _playerVelocity = Vector2.Zero;
@@ -1021,6 +1033,7 @@ public class Game1 : Game
         {
             _hasButtonDoorLevel = true;
             _hasCube = false;
+            _showControlHint = false;
 
             _playerPosition = new Vector2(120, 690);
             _playerVelocity = Vector2.Zero;
@@ -1094,6 +1107,7 @@ public class Game1 : Game
         _spriteBatch = new SpriteBatch(GraphicsDevice);
         _menuBackground = Content.Load<Texture2D>("menu_background");
         _levelBackground = Content.Load<Texture2D>("level_background");
+        _controlHintTexture = Content.Load<Texture2D>("controls");
 
         _crosshairNoPortals = Content.Load<Texture2D>("crosshair_none");
         _crosshairBlueOnly = Content.Load<Texture2D>("crosshair_blue");
@@ -1621,6 +1635,22 @@ public class Game1 : Game
         foreach (var platform in _platforms)
         {
             _spriteBatch.Draw(_pixel, platform, Color.Gray);
+        }
+
+        if (_showControlHint)
+        {
+            float controlsScale = 0.35f;
+
+            _spriteBatch.Draw(
+                _controlHintTexture,
+                _controlHintPosition = new Vector2(550, 480),
+                null,
+                Color.White,
+                0f,
+                Vector2.Zero,
+                controlsScale,
+                SpriteEffects.None,
+                0f);
         }
 
         if (_hasButtonDoorLevel)
