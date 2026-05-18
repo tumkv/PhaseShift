@@ -23,6 +23,11 @@
 /processor:TextureProcessor
 /build:menu_background.png
 
+#begin level_background.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:level_background.png
+
 #begin blue_portal.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -37,3 +42,23 @@
 /importer:TextureImporter
 /processor:TextureProcessor
 /build:portal_glow.png
+
+#begin crosshair_none.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:crosshair_none.png
+
+#begin crosshair_blue.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:crosshair_blue.png
+
+#begin crosshair_orange.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:crosshair_orange.png
+
+#begin crosshair_both.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:crosshair_both.png

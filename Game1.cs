@@ -19,21 +19,55 @@ public class Game1 : Game
     private List<Rectangle> _noPortalSurfaces = new List<Rectangle>();
     private List<Rectangle> _electricZones = new List<Rectangle>();
 
+
+    #region Электропол
     // электро-пол
     private bool _electricActive = false;
     private float _electricTimer = 0f;
 
     private const float ElectricOnTime = 2f;
     private const float ElectricOffTime = 4f;
+    #endregion
 
+    #region Оформление
     // шрифт
     private SpriteFont _font;
+    
 
     // левелкомплит экран
     private bool _levelCompletedScreen = false;
     private int _completedLevelNumber = 1;
     private float _levelCompleteAlpha = 0f;
     private const float LevelCompleteFadeSpeed = 2f;
+
+    // бэкграунд
+    private Texture2D _levelBackground;
+
+    // курсор
+    private Texture2D _crosshairNoPortals;
+    private Texture2D _crosshairBlueOnly;
+    private Texture2D _crosshairOrangeOnly;
+    private Texture2D _crosshairBothPortals;
+
+    private Texture2D GetCurrentCrosshair()
+    {
+        bool hasBlue = _bluePortal != null;
+        bool hasOrange = _orangePortal != null;
+
+        if (hasBlue && hasOrange)
+            return _crosshairBothPortals;
+
+        if (hasBlue)
+            return _crosshairBlueOnly;
+
+        if (hasOrange)
+            return _crosshairOrangeOnly;
+
+        return _crosshairNoPortals;
+    }
+
+
+    #endregion
 
     #region ГлавноеМеню
     // фон меню
@@ -215,6 +249,11 @@ public class Game1 : Game
         return false;
     }
 
+    private bool PortalTouchesButton(Rectangle portal)
+    {
+        return _hasButtonDoorLevel && portal.Intersects(_button);
+    }
+
 
     private class Portal
     {
@@ -247,8 +286,6 @@ public class Game1 : Game
             Vector2 currentPoint = playerCenter + direction * distance;
             Point checkPoint = new Point((int)currentPoint.X, (int)currentPoint.Y);
 
-                if (PointInsideBackgroundBlock(checkPoint))
-                    return;
 
                 int hitIndex = -1;
 
@@ -269,6 +306,12 @@ public class Game1 : Game
                     return;
 
                 Rectangle platform = _platforms[hitIndex];
+
+                if (_hasButtonDoorLevel &&
+                    hitIndex == _doorPlatformIndex)
+                {
+                        return;
+                }
 
                 bool isWall = platform.Height > platform.Width;
                 Rectangle newPortal;
@@ -326,9 +369,12 @@ public class Game1 : Game
                 }
 
                 if (PortalTouchesElectricZone(newPortal))
-                    continue;
+                    return;
 
-                if (isWall)
+                if (PortalTouchesButton(newPortal))
+                    return;
+
+            if (isWall)
                 {
                     if (newPortal.Top <= platform.Top || newPortal.Bottom >= platform.Bottom)
                         continue;
@@ -340,7 +386,7 @@ public class Game1 : Game
                 }
 
                 if (PortalOverlapsOtherPlatforms(newPortal, platform))
-                    continue;
+                    return;
 
                 const int magnetDistance = 5;
 
@@ -533,7 +579,7 @@ public class Game1 : Game
 
         bool buttonPressed =
             PlayerBounds.Intersects(_button) ||
-            CubeBounds.Intersects(_button);
+            (_hasCube && CubeBounds.Intersects(_button));
 
         _doorOpen = buttonPressed;
 
@@ -971,6 +1017,46 @@ public class Game1 : Game
             // кнопка
             _button = new Rectangle(180, 280, 100, 20);
         }
+        else if (levelNumber == 6)
+        {
+            _hasButtonDoorLevel = true;
+            _hasCube = false;
+
+            _playerPosition = new Vector2(120, 690);
+            _playerVelocity = Vector2.Zero;
+
+            _exit = new Rectangle(1400, 200, 50, 100);
+
+            // границы комнаты
+            _platforms.Add(new Rectangle(0, 0, 1600, 40));
+            _platforms.Add(new Rectangle(0, 860, 1600, 40));
+            _platforms.Add(new Rectangle(0, 0, 40, 900));
+            _platforms.Add(new Rectangle(1560, 0, 40, 900));
+
+            // большой верхний левый блок
+            _platforms.Add(new Rectangle(40, 450, 760, 40));   // низ блока
+            _platforms.Add(new Rectangle(760, 40, 40, 450));   // правая стенка блока
+            _backgroundBlocks.Add(new Rectangle(40, 40, 760, 410));
+
+            // нижний путь
+            _platforms.Add(new Rectangle(40, 730, 430, 140));
+            _platforms.Add(new Rectangle(470, 730, 660, 140));
+
+            // дверь
+            _door = new Rectangle(470, 450, 50, 280);
+            _doorPlatformIndex = _platforms.Count;
+            _platforms.Add(_door);
+
+            // кнопка
+            _button = new Rectangle(220, 710, 140, 20);
+
+            // большой правый блок с выходом
+            _platforms.Add(new Rectangle(1100, 300, 460, 40));  // верх блока
+            _platforms.Add(new Rectangle(1100, 300, 40, 560));  // левая стенка
+            _platforms.Add(new Rectangle(1560, 300, 40, 560));  // правая стенка
+            _backgroundBlocks.Add(new Rectangle(1140, 340, 420, 520));
+            _platforms.Add(new Rectangle(1320, 300, 240, 40));
+        }
 
         _playerVelocity = Vector2.Zero;
     }
@@ -981,7 +1067,7 @@ public class Game1 : Game
     {
         _graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
-        IsMouseVisible = true;
+        IsMouseVisible = false;
     }
 
     protected override void Initialize()
@@ -994,7 +1080,7 @@ public class Game1 : Game
         _continueButton = new Rectangle(120, 400, 320, 70);
         _exitButton = new Rectangle(120, 500, 320, 70);
 
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 6; i++)
         {
             _levelButtons.Add(new Rectangle(120 + i * 140, 350, 100, 100));
         }
@@ -1007,10 +1093,17 @@ public class Game1 : Game
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
         _menuBackground = Content.Load<Texture2D>("menu_background");
+        _levelBackground = Content.Load<Texture2D>("level_background");
+
+        _crosshairNoPortals = Content.Load<Texture2D>("crosshair_none");
+        _crosshairBlueOnly = Content.Load<Texture2D>("crosshair_blue");
+        _crosshairOrangeOnly = Content.Load<Texture2D>("crosshair_orange");
+        _crosshairBothPortals = Content.Load<Texture2D>("crosshair_both");
 
         _bluePortalTexture = Content.Load<Texture2D>("blue_portal");
         _orangePortalTexture = Content.Load<Texture2D>("orange_portal");
         _portalGlowTexture = Content.Load<Texture2D>("portal_glow");
+
 
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
@@ -1021,6 +1114,8 @@ public class Game1 : Game
     {
         var keyboard = Keyboard.GetState();
         var mouse = Mouse.GetState();
+
+        IsMouseVisible = _gameState != GameState.Playing;
 
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
@@ -1101,7 +1196,7 @@ public class Game1 : Game
             {
                 _currentLevel++;
 
-                if (_currentLevel > 5)
+                if (_currentLevel > 6)
                     _currentLevel = 1;
 
                 LoadLevel(_currentLevel);
@@ -1422,6 +1517,41 @@ public class Game1 : Game
 
         _spriteBatch.Begin();
 
+        if (_levelCompletedScreen)
+        {
+            GraphicsDevice.Clear(Color.Black);
+
+            Color textColor = Color.White * _levelCompleteAlpha;
+            Color fadeWhite = Color.White * _levelCompleteAlpha;
+            Color fadeBlack = Color.Black * _levelCompleteAlpha;
+
+            _spriteBatch.DrawString(
+                _font,
+                $"LEVEL {_completedLevelNumber} COMPLETED",
+                new Vector2(40, 40),
+                textColor);
+
+            string continueText = "Press any key to continue";
+            Vector2 textSize = _font.MeasureString(continueText);
+
+            _spriteBatch.DrawString(
+                _font,
+                continueText,
+                new Vector2(
+                    (GraphicsDevice.Viewport.Width - textSize.X) / 2,
+                    GraphicsDevice.Viewport.Height - 120),
+                textColor);
+
+            _spriteBatch.End();
+            base.Draw(gameTime);
+            return;
+        }
+
+        _spriteBatch.Draw(
+        _levelBackground,
+            new Rectangle(0, 0, 1600, 900),
+            Color.White);
+            
         if (_gameState == GameState.MainMenu)
         {
             _spriteBatch.Draw(
@@ -1482,35 +1612,6 @@ public class Game1 : Game
             return;
         }
 
-        if (_levelCompletedScreen)
-        {
-            GraphicsDevice.Clear(Color.Black);
-
-            Color textColor = Color.White * _levelCompleteAlpha;
-            Color fadeWhite = Color.White * _levelCompleteAlpha;
-            Color fadeBlack = Color.Black * _levelCompleteAlpha;
-
-            _spriteBatch.DrawString(
-                _font,
-                $"LEVEL {_completedLevelNumber} COMPLETED",
-                new Vector2(40, 40),
-                textColor);
-
-            string continueText = "Press any key to continue";
-            Vector2 textSize = _font.MeasureString(continueText);
-
-            _spriteBatch.DrawString(
-                _font,
-                continueText,
-                new Vector2(
-                    (GraphicsDevice.Viewport.Width - textSize.X) / 2,
-                    GraphicsDevice.Viewport.Height - 120),
-                textColor);
-
-            _spriteBatch.End();
-            base.Draw(gameTime);
-            return;
-        }
 
         foreach (var block in _backgroundBlocks)
         {
@@ -1572,6 +1673,29 @@ public class Game1 : Game
         }
 
         _spriteBatch.Draw(_pixel, PlayerBounds, Color.Orange);
+
+        if (_gameState == GameState.Playing)
+        {
+            Texture2D crosshair = GetCurrentCrosshair();
+            MouseState mouse = Mouse.GetState();
+
+            float crosshairScale = 0.2f;
+
+            Vector2 crosshairPosition = new Vector2(
+                mouse.X - (crosshair.Width * crosshairScale) / 2f,
+                mouse.Y - (crosshair.Height * crosshairScale) / 2f);
+
+            _spriteBatch.Draw(
+                crosshair,
+                crosshairPosition,
+                null,
+                Color.White,
+                0f,
+                Vector2.Zero,
+                crosshairScale,
+                SpriteEffects.None,
+                0f);
+        }
 
         if (_fadeAlpha > 0f)
         {
