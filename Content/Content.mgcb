@@ -67,3 +67,13 @@
 /importer:TextureImporter
 /processor:TextureProcessor
 /build:controls.png
+
+#begin blueprojectile.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:blueprojectile.png
+
+#begin orangeprojectile.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:orangeprojectile.png

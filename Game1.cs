@@ -76,12 +76,25 @@ public class Game1 : Game
     // фон меню
     private Texture2D _menuBackground;
 
+
+    // меню настроек
+    private float _musicVolume = 1f;
+    private float _sfxVolume = 1f;
+
+    private Rectangle _musicSliderBar;
+    private Rectangle _sfxSliderBar;
+
+    private bool _draggingMusicSlider = false;
+    private bool _draggingSfxSlider = false;
+
     // состояния игры
     private enum GameState
     {
         MainMenu,
         LevelSelect,
-        Playing
+        Settings,
+        Playing,
+        Paused
     }
 
     private GameState _gameState = GameState.MainMenu;
@@ -89,7 +102,11 @@ public class Game1 : Game
     // кнопки меню
     private Rectangle _newGameButton;
     private Rectangle _continueButton;
+    private Rectangle _settingsButton;
     private Rectangle _exitButton;
+    private Rectangle _resumeButton;
+    private Rectangle _pauseSettingsButton;
+    private Rectangle _mainMenuButton;
 
     // кнопки выбора уровней
     private List<Rectangle> _levelButtons = new List<Rectangle>();
@@ -97,7 +114,11 @@ public class Game1 : Game
     // hover
     private bool _hoverNewGame;
     private bool _hoverContinue;
+    private bool _hoverSettings;
     private bool _hoverExit;
+    private bool _hoverResume;
+    private bool _hoverPauseSettings;
+    private bool _hoverMainMenu;
 
     private void DrawMenuButton(Rectangle rect, string text, bool hovered)
     {
@@ -202,9 +223,11 @@ public class Game1 : Game
     #region Порталы
     private Portal _bluePortal = null;
     private Portal _orangePortal = null;
+    private List<PortalProjectile> _projectiles = new List<PortalProjectile>();
 
     private const int PortalWidth = 20;
     private const int PortalHeight = 60;
+    private const float ProjectileSpeed = 70f;
 
     private const float PortalShootDistance = 1000f;
     private const float PortalRayStep = 4f;
@@ -267,6 +290,26 @@ public class Game1 : Game
         {
             Bounds = bounds;
             ExitDirection = exitDirection;
+        }
+    }
+
+    private class PortalProjectile
+    {
+        public Vector2 Position;
+        public Vector2 Direction;
+        public bool IsBlue;
+
+        public float Lifetime;
+        public float MaxLifetime;
+
+        public PortalProjectile(Vector2 position, Vector2 direction, bool isBlue)
+        {
+            Position = position;
+            Direction = direction;
+            IsBlue = isBlue;
+
+            MaxLifetime = 0.2f;
+            Lifetime = MaxLifetime;
         }
     }
 
@@ -428,12 +471,94 @@ public class Game1 : Game
                 return;
         }
     }
+    private void ShootPortalProjectile(bool isBlue, Point mousePosition)
+    {
+        Vector2 playerCenter = new Vector2(
+            _playerPosition.X + PlayerWidth / 2,
+            _playerPosition.Y + PlayerHeight / 2);
+
+        Vector2 target = new Vector2(mousePosition.X, mousePosition.Y);
+
+        Vector2 direction = target - playerCenter;
+
+        if (direction == Vector2.Zero)
+            return;
+
+        direction.Normalize();
+
+        _projectiles.Add(new PortalProjectile(
+            playerCenter,
+            direction,
+            isBlue));
+    }
+
+    private void UpdateProjectiles()
+    {
+        for (int i = _projectiles.Count - 1; i >= 0; i--)
+        {
+            var projectile = _projectiles[i];
+
+            projectile.Lifetime -= 1f / 60f;
+
+            if (projectile.Lifetime < 0f)
+                projectile.Lifetime = 0f;
+
+            bool shouldRemove = false;
+            float remainingDistance = ProjectileSpeed;
+
+            while (remainingDistance > 0)
+            {
+                float step = Math.Min(remainingDistance, PortalRayStep);
+                remainingDistance -= step;
+
+                projectile.Position += projectile.Direction * step;
+
+                Point point = projectile.Position.ToPoint();
+
+                if (PointInsideBackgroundBlock(point))
+                {
+                    shouldRemove = true;
+                    break;
+                }
+
+                bool hitPlatform = false;
+
+                foreach (var platform in _platforms)
+                {
+                    if (platform.Contains(point))
+                    {
+                        PlacePortal(projectile.IsBlue, point);
+                        hitPlatform = true;
+                        shouldRemove = true;
+                        break;
+                    }
+                }
+
+                if (hitPlatform)
+                    break;
+
+                if (projectile.Position.X < 0 ||
+                    projectile.Position.X > 1600 ||
+                    projectile.Position.Y < 0 ||
+                    projectile.Position.Y > 900)
+                {
+                    shouldRemove = true;
+                    break;
+                }
+            }
+
+            if (shouldRemove)
+                _projectiles.RemoveAt(i);
+        }
+    }
     #endregion
 
     #region ТекстурыПорталов
     private Texture2D _bluePortalTexture;
     private Texture2D _orangePortalTexture;
     private Texture2D _portalGlowTexture;
+    private Texture2D _blueProjectileTexture;
+    private Texture2D _orangeProjectileTexture;
 
     private void DrawPortal(Portal portal, Texture2D texture, Color glowColor)
     {
@@ -503,6 +628,7 @@ public class Game1 : Game
             scale,
             effects,
             0f);
+
     }
     #endregion
 
@@ -1089,9 +1215,16 @@ public class Game1 : Game
         _graphics.PreferredBackBufferHeight = 900;
         _graphics.ApplyChanges();
 
-        _newGameButton = new Rectangle(120, 300, 320, 70);
-        _continueButton = new Rectangle(120, 400, 320, 70);
-        _exitButton = new Rectangle(120, 500, 320, 70);
+        _newGameButton = new Rectangle(120, 270, 320, 70);
+        _continueButton = new Rectangle(120, 360, 320, 70);
+        _settingsButton = new Rectangle(120, 450, 320, 70);
+        _exitButton = new Rectangle(120, 540, 320, 70);
+        _resumeButton = new Rectangle(640, 280, 320, 70);
+        _pauseSettingsButton = new Rectangle(640, 380, 320, 70);
+        _mainMenuButton = new Rectangle(640, 480, 320, 70);
+
+        _musicSliderBar = new Rectangle(120, 240, 320, 8);
+        _sfxSliderBar = new Rectangle(120, 340, 320, 8);
 
         for (int i = 0; i < 6; i++)
         {
@@ -1118,6 +1251,9 @@ public class Game1 : Game
         _orangePortalTexture = Content.Load<Texture2D>("orange_portal");
         _portalGlowTexture = Content.Load<Texture2D>("portal_glow");
 
+        _blueProjectileTexture = Content.Load<Texture2D>("blueprojectile");
+        _orangeProjectileTexture = Content.Load<Texture2D>("orangeprojectile");
+
 
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
@@ -1141,6 +1277,7 @@ public class Game1 : Game
 
             _hoverNewGame = _newGameButton.Contains(mousePoint);
             _hoverContinue = _continueButton.Contains(mousePoint);
+            _hoverSettings = _settingsButton.Contains(mousePoint);
             _hoverExit = _exitButton.Contains(mousePoint);
 
             if (mouse.LeftButton == ButtonState.Pressed &&
@@ -1155,6 +1292,10 @@ public class Game1 : Game
                 else if (_hoverContinue)
                 {
                     _gameState = GameState.LevelSelect;
+                }
+                else if (_hoverSettings)
+                {
+                    _gameState = GameState.Settings;
                 }
                 else if (_hoverExit)
                 {
@@ -1194,6 +1335,121 @@ public class Game1 : Game
             _previousMouseState = mouse;
             return;
         }
+
+        // настройки
+        if (_gameState == GameState.Settings)
+        {
+            Point mousePoint = mouse.Position;
+
+            Rectangle musicKnob = new Rectangle(
+                (int)(_musicSliderBar.X + _musicVolume * _musicSliderBar.Width) - 10,
+                _musicSliderBar.Y - 8,
+                20,
+                24);
+
+            Rectangle sfxKnob = new Rectangle(
+                (int)(_sfxSliderBar.X + _sfxVolume * _sfxSliderBar.Width) - 10,
+                _sfxSliderBar.Y - 8,
+                20,
+                24);
+
+            // начало перетаскивания
+            if (mouse.LeftButton == ButtonState.Pressed &&
+                _previousMouseState.LeftButton == ButtonState.Released)
+            {
+                if (musicKnob.Contains(mousePoint))
+                    _draggingMusicSlider = true;
+
+                if (sfxKnob.Contains(mousePoint))
+                    _draggingSfxSlider = true;
+            }
+
+            // конец перетаскивания
+            if (mouse.LeftButton == ButtonState.Released)
+            {
+                _draggingMusicSlider = false;
+                _draggingSfxSlider = false;
+            }
+
+            // обновление громкости
+            if (_draggingMusicSlider)
+            {
+                _musicVolume =
+                    (mouse.X - _musicSliderBar.X) /
+                    (float)_musicSliderBar.Width;
+
+                _musicVolume = Math.Clamp(_musicVolume, 0f, 1f);
+            }
+
+            if (_draggingSfxSlider)
+            {
+                _sfxVolume =
+                    (mouse.X - _sfxSliderBar.X) /
+                    (float)_sfxSliderBar.Width;
+
+                _sfxVolume = Math.Clamp(_sfxVolume, 0f, 1f);
+            }
+
+            if (keyboard.IsKeyDown(Keys.Escape))
+            {
+                _gameState = GameState.MainMenu;
+            }
+
+            _previousMouseState = mouse;
+            _previousKeyboardState = keyboard;
+            return;
+        }
+
+        if (_gameState == GameState.Paused)
+        {
+            Point mousePoint = mouse.Position;
+
+            _hoverResume = _resumeButton.Contains(mousePoint);
+            _hoverPauseSettings = _pauseSettingsButton.Contains(mousePoint);
+            _hoverMainMenu = _mainMenuButton.Contains(mousePoint);
+
+            if (mouse.LeftButton == ButtonState.Pressed &&
+                _previousMouseState.LeftButton == ButtonState.Released)
+            {
+                if (_hoverResume)
+                {
+                    _gameState = GameState.Playing;
+
+                    _previousKeyboardState = keyboard;
+                    _previousMouseState = mouse;
+                    return;
+                }
+                else if (_hoverPauseSettings)
+                {
+                    _gameState = GameState.Settings;
+                }
+                else if (_hoverMainMenu)
+                {
+                    _gameState = GameState.MainMenu;
+                }
+            }
+
+            if (keyboard.IsKeyDown(Keys.Escape) &&
+                !_previousKeyboardState.IsKeyDown(Keys.Escape))
+            {
+                _gameState = GameState.Playing;
+            }
+
+            _previousMouseState = mouse;
+            _previousKeyboardState = keyboard;
+            return;
+        }
+
+        // плейинг
+        if (_gameState == GameState.Playing)
+        {
+            if (keyboard.IsKeyDown(Keys.Escape) &&
+                !_previousKeyboardState.IsKeyDown(Keys.Escape))
+            {
+                _gameState = GameState.Paused;
+            }
+        }
+
 
         // финишный экран
         if (_levelCompletedScreen)
@@ -1239,9 +1495,12 @@ public class Game1 : Game
         if (_portalExitTimer > 0)
             _portalExitTimer -= deltaTime;
 
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
-            keyboard.IsKeyDown(Keys.Escape))
-            Exit();
+        if (_gameState == GameState.Playing &&
+                keyboard.IsKeyDown(Keys.Escape) &&
+    !           _previousKeyboardState.IsKeyDown(Keys.Escape))
+        {
+            _gameState = GameState.Paused;
+        }
 
 
         // таймер электричества
@@ -1345,13 +1604,13 @@ public class Game1 : Game
         if (mouse.LeftButton == ButtonState.Pressed &&
             _previousMouseState.LeftButton == ButtonState.Released)
         {
-            PlacePortal(true, mouse.Position);
+            ShootPortalProjectile(true, mouse.Position);
         }
 
         if (mouse.RightButton == ButtonState.Pressed &&
             _previousMouseState.RightButton == ButtonState.Released)
         {
-            PlacePortal(false, mouse.Position);
+            ShootPortalProjectile(false, mouse.Position);
         }
 
         // гравитация
@@ -1522,6 +1781,8 @@ public class Game1 : Game
             return;
         }
 
+        UpdateProjectiles();
+
         base.Update(gameTime);
     }
 
@@ -1531,41 +1792,6 @@ public class Game1 : Game
 
         _spriteBatch.Begin();
 
-        if (_levelCompletedScreen)
-        {
-            GraphicsDevice.Clear(Color.Black);
-
-            Color textColor = Color.White * _levelCompleteAlpha;
-            Color fadeWhite = Color.White * _levelCompleteAlpha;
-            Color fadeBlack = Color.Black * _levelCompleteAlpha;
-
-            _spriteBatch.DrawString(
-                _font,
-                $"LEVEL {_completedLevelNumber} COMPLETED",
-                new Vector2(40, 40),
-                textColor);
-
-            string continueText = "Press any key to continue";
-            Vector2 textSize = _font.MeasureString(continueText);
-
-            _spriteBatch.DrawString(
-                _font,
-                continueText,
-                new Vector2(
-                    (GraphicsDevice.Viewport.Width - textSize.X) / 2,
-                    GraphicsDevice.Viewport.Height - 120),
-                textColor);
-
-            _spriteBatch.End();
-            base.Draw(gameTime);
-            return;
-        }
-
-        _spriteBatch.Draw(
-        _levelBackground,
-            new Rectangle(0, 0, 1600, 900),
-            Color.White);
-            
         if (_gameState == GameState.MainMenu)
         {
             _spriteBatch.Draw(
@@ -1575,6 +1801,7 @@ public class Game1 : Game
 
             DrawMenuButton(_newGameButton, "NEW GAME", _hoverNewGame);
             DrawMenuButton(_continueButton, "CONTINUE", _hoverContinue);
+            DrawMenuButton(_settingsButton, "SETTINGS", _hoverSettings);
             DrawMenuButton(_exitButton, "EXIT", _hoverExit);
 
             _spriteBatch.End();
@@ -1626,6 +1853,162 @@ public class Game1 : Game
             return;
         }
 
+        if (_gameState == GameState.Settings)
+        {
+            GraphicsDevice.Clear(Color.Black);
+
+            _spriteBatch.DrawString(
+                _font,
+                "SETTINGS",
+                new Vector2(120, 120),
+                Color.Orange);
+
+            // музыка
+            _spriteBatch.DrawString(
+                _font,
+                "Music Volume",
+                new Vector2(120, 190),
+                Color.White);
+
+            _spriteBatch.Draw(
+                _pixel,
+                _musicSliderBar,
+                Color.DarkGray);
+
+            Rectangle musicFill = new Rectangle(
+                _musicSliderBar.X,
+                _musicSliderBar.Y,
+                (int)(_musicSliderBar.Width * _musicVolume),
+                _musicSliderBar.Height);
+
+            _spriteBatch.Draw(
+                _pixel,
+                musicFill,
+                Color.Orange);
+
+            Rectangle musicKnob = new Rectangle(
+                musicFill.Right - 10,
+                _musicSliderBar.Y - 8,
+                20,
+                24);
+
+            _spriteBatch.Draw(
+                _pixel,
+                musicKnob,
+                Color.White);
+
+            // сфх
+            _spriteBatch.DrawString(
+                _font,
+                "SFX Volume",
+                new Vector2(120, 290),
+                Color.White);
+
+            _spriteBatch.Draw(
+                _pixel,
+                _sfxSliderBar,
+                Color.DarkGray);
+
+            Rectangle sfxFill = new Rectangle(
+                _sfxSliderBar.X,
+                _sfxSliderBar.Y,
+                (int)(_sfxSliderBar.Width * _sfxVolume),
+                _sfxSliderBar.Height);
+
+            _spriteBatch.Draw(
+                _pixel,
+                sfxFill,
+                Color.Orange);
+
+            Rectangle sfxKnob = new Rectangle(
+                sfxFill.Right - 10,
+                _sfxSliderBar.Y - 8,
+                20,
+                24);
+
+            _spriteBatch.Draw(
+                _pixel,
+                sfxKnob,
+                Color.White);
+
+            _spriteBatch.DrawString(
+                _font,
+                "Press ESC to go back",
+                new Vector2(120, 500),
+                Color.Gray);
+
+            _spriteBatch.End();
+            base.Draw(gameTime);
+            return;
+        }
+
+        if (_gameState == GameState.Paused)
+        {
+            _spriteBatch.Draw(
+                _levelBackground,
+                new Rectangle(0, 0, 1600, 900),
+                Color.White);
+
+            _spriteBatch.Draw(
+                _pixel,
+                new Rectangle(0, 0, 1600, 900),
+                Color.Black * 0.6f);
+
+            string pausedText = "PAUSED";
+            Vector2 pausedSize = _font.MeasureString(pausedText);
+
+            _spriteBatch.DrawString(
+                _font,
+                pausedText,
+                new Vector2(
+                    (GraphicsDevice.Viewport.Width - pausedSize.X) / 2,
+                    180),
+                Color.White);
+
+            DrawMenuButton(_resumeButton, "RESUME", _hoverResume);
+            DrawMenuButton(_pauseSettingsButton, "SETTINGS", _hoverPauseSettings);
+            DrawMenuButton(_mainMenuButton, "MAIN MENU", _hoverMainMenu);
+
+            _spriteBatch.End();
+            base.Draw(gameTime);
+            return;
+        }
+
+        if (_levelCompletedScreen)
+        {
+            GraphicsDevice.Clear(Color.Black);
+
+            Color textColor = Color.White * _levelCompleteAlpha;
+            Color fadeWhite = Color.White * _levelCompleteAlpha;
+            Color fadeBlack = Color.Black * _levelCompleteAlpha;
+
+            _spriteBatch.DrawString(
+                _font,
+                $"LEVEL {_completedLevelNumber} COMPLETED",
+                new Vector2(40, 40),
+                textColor);
+
+            string continueText = "Press any key to continue";
+            Vector2 textSize = _font.MeasureString(continueText);
+
+            _spriteBatch.DrawString(
+                _font,
+                continueText,
+                new Vector2(
+                    (GraphicsDevice.Viewport.Width - textSize.X) / 2,
+                    GraphicsDevice.Viewport.Height - 120),
+                textColor);
+
+            _spriteBatch.End();
+            base.Draw(gameTime);
+            return;
+        }
+
+        _spriteBatch.Draw(
+        _levelBackground,
+            new Rectangle(0, 0, 1600, 900),
+            Color.White);
+            
 
         foreach (var block in _backgroundBlocks)
         {
@@ -1671,6 +2054,31 @@ public class Game1 : Game
             _spriteBatch.Draw(_pixel, electricZone, electricColor);
         }
 
+        foreach (var projectile in _projectiles)
+        {
+            Texture2D texture = projectile.IsBlue
+                ? _blueProjectileTexture
+                : _orangeProjectileTexture;
+
+            float rotation =
+                (float)Math.Atan2(
+                    projectile.Direction.Y,
+                    projectile.Direction.X);
+
+            _spriteBatch.Draw(
+                texture,
+                projectile.Position,
+                null,
+                Color.White * (projectile.Lifetime / projectile.MaxLifetime),
+                rotation,
+                new Vector2(
+                    texture.Width / 2f,
+                    texture.Height / 2f),
+                0.02f,
+                SpriteEffects.None,
+                0f);
+        }
+
         if (_bluePortal != null)
         {
             DrawPortal(_bluePortal, _bluePortalTexture, Color.Cyan);
@@ -1704,6 +2112,14 @@ public class Game1 : Game
 
         _spriteBatch.Draw(_pixel, PlayerBounds, Color.Orange);
 
+        if (_fadeAlpha > 0f)
+        {
+            _spriteBatch.Draw(
+                _pixel,
+                new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height),
+                Color.Black * _fadeAlpha);
+        }
+
         if (_gameState == GameState.Playing)
         {
             Texture2D crosshair = GetCurrentCrosshair();
@@ -1725,14 +2141,6 @@ public class Game1 : Game
                 crosshairScale,
                 SpriteEffects.None,
                 0f);
-        }
-
-        if (_fadeAlpha > 0f)
-        {
-            _spriteBatch.Draw(
-                _pixel,
-                new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height),
-                Color.Black * _fadeAlpha);
         }
 
         _spriteBatch.End();
