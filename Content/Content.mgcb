@@ -77,3 +77,143 @@
 /importer:TextureImporter
 /processor:TextureProcessor
 /build:orangeprojectile.png
+
+#begin background_music.mp3
+/importer:Mp3Importer
+/processor:SongProcessor
+/build:background_music.mp3
+
+#begin blue_shoot.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:blue_shoot.wav
+
+#begin orange_shoot.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:orange_shoot.wav
+
+#begin blue_open.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:blue_open.wav
+
+#begin orange_open.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:orange_open.wav
+
+#begin portal_close.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:portal_close.wav
+
+#begin cube_hold.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:cube_hold.wav
+
+#begin cube_fail.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:cube_fail.wav
+
+#begin button_press.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:button_press.wav
+
+#begin button_release.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:button_release.wav
+
+#begin portal_exit.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:portal_exit.wav
+
+#begin portal_enter.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:portal_enter.wav
+
+#begin footstep2.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:footstep2.wav
+
+#begin footstep3.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:footstep3.wav
+
+#begin footstep4.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:footstep4.wav
+
+#begin footstep5.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:footstep5.wav
+
+#begin footstep6.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:footstep6.wav
+
+#begin footstep7.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:footstep7.wav
+
+#begin footstep8.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:footstep8.wav
+
+#begin footstep9.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:footstep9.wav
+
+#begin land2.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:land2.wav
+
+#begin land3.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:land3.wav
+
+#begin land4.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:land4.wav
+
+#begin land5.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:land5.wav
+
+#begin land6.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:land6.wav
+
+#begin land7.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:land7.wav
+
+#begin land8.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:land8.wav
+
+#begin land9.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:land9.wav

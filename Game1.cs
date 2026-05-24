@@ -3,6 +3,8 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
+using Microsoft.Xna.Framework.Media;
+using Microsoft.Xna.Framework.Audio;
 
 namespace PhaseShift;
 
@@ -69,6 +71,41 @@ public class Game1 : Game
         return _crosshairNoPortals;
     }
 
+
+    #endregion
+
+    #region Звуки
+    private Song _backgroundMusic;
+    private SoundEffect _bluePortalShootSound;
+    private SoundEffect _orangePortalShootSound;
+    private SoundEffect _bluePortalOpenSound;
+    private SoundEffect _orangePortalOpenSound;
+    private SoundEffect _portalCloseSound;
+    private SoundEffect _cubeHoldSound;
+    private SoundEffectInstance _cubeHoldInstance;
+    private SoundEffect _cubeFailSound;
+    private SoundEffect _buttonPressSound;
+    private bool _buttonWasPressed = false;
+    private SoundEffect _buttonReleaseSound;
+    private SoundEffect _portalExitSound;
+    private SoundEffect _portalEnterSound;
+
+    private List<SoundEffect> _footstepSounds = new();
+    private List<SoundEffect> _landingSounds = new();
+
+
+    private Random _random = new Random();
+
+
+    private void PlayRandomSound(List<SoundEffect> sounds)
+    {
+        if (sounds.Count == 0)
+            return;
+
+        int index = _random.Next(sounds.Count);
+
+        sounds[index].Play(_sfxVolume, 0f, 0f);
+    }
 
     #endregion
 
@@ -327,6 +364,7 @@ public class Game1 : Game
 
         direction.Normalize();
 
+
         for (float distance = 0; distance < PortalShootDistance; distance += PortalRayStep)
         {
             Vector2 currentPoint = playerCenter + direction * distance;
@@ -468,7 +506,13 @@ public class Game1 : Game
                 else
                     _orangePortal = portal;
 
-                return;
+
+                if (isBlue)
+                    _bluePortalOpenSound.Play(_sfxVolume, 0f, 0f);
+                else
+                    _orangePortalOpenSound.Play(_sfxVolume, 0f, 0f);
+
+            return;
         }
     }
     private void ShootPortalProjectile(bool isBlue, Point mousePosition)
@@ -485,6 +529,11 @@ public class Game1 : Game
             return;
 
         direction.Normalize();
+
+        if (isBlue)
+            _bluePortalShootSound.Play(_sfxVolume, 0f, 0f);
+        else
+            _orangePortalShootSound.Play(_sfxVolume, 0f, 0f);
 
         _projectiles.Add(new PortalProjectile(
             playerCenter,
@@ -654,11 +703,19 @@ public class Game1 : Game
             {
                 _isHoldingCube = false;
                 _cubeVelocity = Vector2.Zero;
+
+                _cubeHoldInstance.Stop();
             }
             else if (distanceToCube < 100f)
             {
                 _isHoldingCube = true;
                 _cubeVelocity = Vector2.Zero;
+                _cubeHoldInstance.Volume = _sfxVolume;
+                _cubeHoldInstance.Play();
+            }
+            else
+            {
+                _cubeFailSound.Play(_sfxVolume, 0f, 0f);
             }
         }
 
@@ -710,6 +767,17 @@ public class Game1 : Game
             PlayerBounds.Intersects(_button) ||
             (_hasCube && CubeBounds.Intersects(_button));
 
+        if (buttonPressed && !_buttonWasPressed)
+        {
+            _buttonPressSound.Play(_sfxVolume, 0f, 0f);
+        }
+
+        if (!buttonPressed && _buttonWasPressed)
+        {
+            _buttonReleaseSound.Play(_sfxVolume, 0f, 0f);
+        }
+
+        _buttonWasPressed = buttonPressed;
         _doorOpen = buttonPressed;
 
         if (_doorPlatformIndex >= 0)
@@ -961,6 +1029,8 @@ public class Game1 : Game
         _isTeleporting = false;
         _preserveMomentum = false;
         _sameDirectionPortalSpeed = 0f;
+        _cubeHoldInstance.Stop();
+        _buttonWasPressed = false;
 
         if (levelNumber == 1)
         {
@@ -1254,6 +1324,34 @@ public class Game1 : Game
         _blueProjectileTexture = Content.Load<Texture2D>("blueprojectile");
         _orangeProjectileTexture = Content.Load<Texture2D>("orangeprojectile");
 
+        _backgroundMusic = Content.Load<Song>("background_music");
+        MediaPlayer.IsRepeating = true;
+        MediaPlayer.Volume = _musicVolume;
+        MediaPlayer.Play(_backgroundMusic);
+
+        _bluePortalShootSound = Content.Load<SoundEffect>("blue_shoot");
+        _orangePortalShootSound = Content.Load<SoundEffect>("orange_shoot");
+        _bluePortalOpenSound = Content.Load<SoundEffect>("blue_open");
+        _orangePortalOpenSound = Content.Load<SoundEffect>("orange_open");
+        _portalCloseSound = Content.Load<SoundEffect>("portal_close");
+        _cubeHoldSound = Content.Load<SoundEffect>("cube_hold");
+        _cubeHoldInstance = _cubeHoldSound.CreateInstance();
+        _cubeHoldInstance.IsLooped = true;
+        _cubeFailSound = Content.Load<SoundEffect>("cube_fail");
+        _buttonPressSound = Content.Load<SoundEffect>("button_press");
+        _buttonReleaseSound = Content.Load<SoundEffect>("button_release");
+        _portalExitSound = Content.Load<SoundEffect>("portal_exit");
+        _portalEnterSound = Content.Load<SoundEffect>("portal_enter");
+
+        _landingSounds.Add(Content.Load<SoundEffect>("land2"));
+        _landingSounds.Add(Content.Load<SoundEffect>("land3"));
+        _landingSounds.Add(Content.Load<SoundEffect>("land4"));
+        _landingSounds.Add(Content.Load<SoundEffect>("land5"));
+        _landingSounds.Add(Content.Load<SoundEffect>("land6"));
+        _landingSounds.Add(Content.Load<SoundEffect>("land7"));
+        _landingSounds.Add(Content.Load<SoundEffect>("land8"));
+        _landingSounds.Add(Content.Load<SoundEffect>("land9"));
+
 
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
@@ -1395,6 +1493,8 @@ public class Game1 : Game
                 _gameState = GameState.MainMenu;
             }
 
+            MediaPlayer.Volume = _musicVolume;
+
             _previousMouseState = mouse;
             _previousKeyboardState = keyboard;
             return;
@@ -1482,6 +1582,11 @@ public class Game1 : Game
         if (keyboard.IsKeyDown(Keys.R) &&
     !_previousKeyboardState.IsKeyDown(Keys.R))
         {
+            if (_bluePortal != null || _orangePortal != null)
+            {
+                _portalCloseSound.Play(_sfxVolume, 0f, 0f);
+            }
+
             _bluePortal = null;
             _orangePortal = null;
             _isTeleporting = false;
@@ -1710,14 +1815,24 @@ public class Game1 : Game
             {
                 if (PlayerBounds.Intersects(_bluePortal.Bounds))
                 {
+                    _portalEnterSound.Play(_sfxVolume, 0f, 0f);
+
                     _playerPosition = GetExitPosition(_orangePortal);
                     ApplyExitVelocity(_bluePortal, _orangePortal);
+
+                    _portalExitSound.Play(_sfxVolume, 0f, 0f);
+
                     _isTeleporting = true;
                 }
                 else if (PlayerBounds.Intersects(_orangePortal.Bounds))
                 {
+                    _portalEnterSound.Play(_sfxVolume, 0f, 0f);
+
                     _playerPosition = GetExitPosition(_bluePortal);
                     ApplyExitVelocity(_orangePortal, _bluePortal);
+
+                    _portalExitSound.Play(_sfxVolume, 0f, 0f);
+
                     _isTeleporting = true;
                 }
             }
@@ -1733,7 +1848,7 @@ public class Game1 : Game
             _isTeleporting = false;
         }
 
-            _previousMouseState = mouse;
+        _previousMouseState = mouse;
             _previousKeyboardState = keyboard;
 
 
