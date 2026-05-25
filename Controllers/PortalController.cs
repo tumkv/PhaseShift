@@ -7,13 +7,20 @@ namespace PhaseShift.Controllers;
 
 public class PortalController
 {
+    private const int PlayerWidth = 40;
+    private const int PlayerHeight = 40;
+    private const float MaxFallSpeed = 16f;
+
     private const float ProjectileSpeed = 70f;
     private const float PortalRayStep = 4f;
 
     private MouseState _previousMouseState;
 
-    public void Update(GameWorld world, MouseState mouse)
+    public void Update(GameWorld world, MouseState mouse, float deltaTime)
     {
+        if (world.PortalExitTimer > 0f)
+            world.PortalExitTimer -= deltaTime;
+
         if (mouse.LeftButton == ButtonState.Pressed &&
             _previousMouseState.LeftButton == ButtonState.Released)
         {
@@ -27,8 +34,98 @@ public class PortalController
         }
 
         UpdateProjectiles(world);
+        UpdateTeleportation(world);
 
         _previousMouseState = mouse;
+    }
+
+    private void UpdateTeleportation(GameWorld world)
+    {
+        if (world.BluePortal == null || world.OrangePortal == null)
+        {
+            world.IsTeleporting = false;
+            return;
+        }
+
+        var player = world.Player;
+
+        if (!world.IsTeleporting)
+        {
+            if (player.Bounds.Intersects(world.BluePortal.Bounds))
+            {
+                player.Position = GetExitPosition(world.OrangePortal);
+                ApplyExitVelocity(world, world.BluePortal, world.OrangePortal);
+
+                world.IsTeleporting = true;
+            }
+            else if (player.Bounds.Intersects(world.OrangePortal.Bounds))
+            {
+                player.Position = GetExitPosition(world.BluePortal);
+                ApplyExitVelocity(world, world.OrangePortal, world.BluePortal);
+
+                world.IsTeleporting = true;
+            }
+        }
+
+        if (!player.Bounds.Intersects(world.BluePortal.Bounds) &&
+            !player.Bounds.Intersects(world.OrangePortal.Bounds))
+        {
+            world.IsTeleporting = false;
+        }
+    }
+
+    private Vector2 GetExitPosition(PortalModel portal)
+    {
+        Vector2 center = new Vector2(
+            portal.Bounds.Center.X - PlayerModel.Width / 2,
+            portal.Bounds.Center.Y - PlayerModel.Height / 2);
+
+        return center + portal.ExitDirection * 50f;
+    }
+
+    private void ApplyExitVelocity(
+        GameWorld world,
+        PortalModel entryPortal,
+        PortalModel exitPortal)
+    {
+        world.Player.Velocity = RotateMomentum(
+            world,
+            world.Player.Velocity,
+            entryPortal.ExitDirection,
+            exitPortal.ExitDirection);
+
+        world.Player.PreserveMomentum = true;
+
+        world.PortalExitTimer = 0.15f;
+    }
+
+    private Vector2 RotateMomentum(
+        GameWorld world,
+        Vector2 velocity,
+        Vector2 entryDirection,
+        Vector2 exitDirection)
+    {
+        float speed = velocity.Length();
+
+        if (speed < 1f)
+            return Vector2.Zero;
+
+        if (entryDirection == exitDirection)
+        {
+            if (world.SameDirectionPortalSpeed <= 0f)
+                world.SameDirectionPortalSpeed = speed;
+
+            speed = Math.Min(speed, world.SameDirectionPortalSpeed);
+        }
+        else
+        {
+            world.SameDirectionPortalSpeed = 0f;
+        }
+
+        if (speed > MaxFallSpeed)
+            speed = MaxFallSpeed;
+
+        return exitDirection * speed;
     }
 
     private void ShootPortalProjectile(GameWorld world, Point mousePosition, bool isBlue)

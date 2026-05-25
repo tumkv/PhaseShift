@@ -17,6 +17,10 @@ public class GameWorld
 
     public List<PortalProjectileModel> Projectiles = new();
 
+    public bool IsTeleporting = false;
+    public float PortalExitTimer = 0f;
+    public float SameDirectionPortalSpeed = 0f;
+
     public Rectangle Exit;
 
     public int CurrentLevel = 1;

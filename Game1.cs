@@ -60,16 +60,18 @@ public class Game1 : Game
     }
 
     protected override void Update(GameTime gameTime)
-{
+    {
         var keyboard = Keyboard.GetState();
         var mouse = Mouse.GetState();
 
+        float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
         _playerController.Update(_world, keyboard);
         _collisionController.ResolvePlayerCollisions(_world);
-        _portalController.Update(_world, mouse);
+        _portalController.Update(_world, mouse, deltaTime);
 
         base.Update(gameTime);
-}
+    }
 
     protected override void Draw(GameTime gameTime)
     {
