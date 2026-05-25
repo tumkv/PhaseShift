@@ -68,10 +68,9 @@ public class CubeController
             Vector2 targetPosition = playerCenter + direction * CubeModel.HoldDistance;
             targetPosition -= new Vector2(CubeModel.Size / 2, CubeModel.Size / 2);
 
-            cube.Position = Vector2.Lerp(
-                cube.Position,
-                targetPosition,
-                CubeModel.FollowSpeed);
+            MoveHeldCubeWithCollisions(world, targetPosition);
+
+            cube.Velocity = Vector2.Zero;
 
             _previousKeyboardState = keyboard;
             return;
@@ -97,5 +96,68 @@ public class CubeController
         }
 
         _previousKeyboardState = keyboard;
+    }
+
+    private void MoveHeldCubeWithCollisions(GameWorld world, Vector2 targetPosition)
+    {
+        var cube = world.Cube;
+
+        Vector2 nextPosition = Vector2.Lerp(
+            cube.Position,
+            targetPosition,
+            CubeModel.FollowSpeed);
+
+        Vector2 movement = nextPosition - cube.Position;
+
+        MoveCubeOnX(world, movement.X);
+        MoveCubeOnY(world, movement.Y);
+    }
+
+    private void MoveCubeOnX(GameWorld world, float movementX)
+    {
+        var cube = world.Cube;
+
+        if (movementX == 0)
+            return;
+
+        cube.Position.X += movementX;
+
+        foreach (var platform in world.Platforms)
+        {
+            if (platform == Rectangle.Empty)
+                continue;
+
+            if (!cube.Bounds.Intersects(platform))
+                continue;
+
+            if (movementX > 0)
+                cube.Position.X = platform.Left - CubeModel.Size;
+            else if (movementX < 0)
+                cube.Position.X = platform.Right;
+        }
+    }
+
+    private void MoveCubeOnY(GameWorld world, float movementY)
+    {
+        var cube = world.Cube;
+
+        if (movementY == 0)
+            return;
+
+        cube.Position.Y += movementY;
+
+        foreach (var platform in world.Platforms)
+        {
+            if (platform == Rectangle.Empty)
+                continue;
+
+            if (!cube.Bounds.Intersects(platform))
+                continue;
+
+            if (movementY > 0)
+                cube.Position.Y = platform.Top - CubeModel.Size;
+            else if (movementY < 0)
+                cube.Position.Y = platform.Bottom;
+        }
     }
 }

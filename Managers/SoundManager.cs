@@ -124,15 +124,15 @@ public class SoundManager
         PlayRandomSound(_landingSounds, 1f);
     }
 
-    public void PlayPortalInvalidSurface()
-    {
-        PlayRandomSound(_portalInvalidSurfaceSounds, PortalInvalidSurfaceVolume);
-    }
-
     public void PlayHighVelocityImpact(float impactSpeed)
     {
         float speedVolume = Math.Clamp(impactSpeed / 16f, 0.4f, 1f);
         PlayRandomSound(_highVelocityImpactSounds, HighVelocityImpactVolume * speedVolume);
+    }
+
+    public void PlayPortalInvalidSurface()
+    {
+        PlayRandomSound(_portalInvalidSurfaceSounds, PortalInvalidSurfaceVolume);
     }
 
     public void PlayBluePortalShoot()

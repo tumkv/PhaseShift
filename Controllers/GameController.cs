@@ -18,6 +18,7 @@ public class GameController
     private readonly ElectricityController _electricityController;
     private readonly LevelProgressController _levelProgressController;
     private readonly CubePortalController _cubePortalController;
+    private readonly PlayerSoundController _playerSoundController;
 
     private KeyboardState _previousKeyboardState;
 
@@ -33,7 +34,8 @@ public class GameController
         ButtonDoorController buttonDoorController,
         TrapController trapController,
         ElectricityController electricityController,
-        LevelProgressController levelProgressController)
+        LevelProgressController levelProgressController,
+        PlayerSoundController playerSoundController)
     {
         _playerController = playerController;
         _collisionController = collisionController;
@@ -47,6 +49,7 @@ public class GameController
         _trapController = trapController;
         _electricityController = electricityController;
         _levelProgressController = levelProgressController;
+        _playerSoundController = playerSoundController;
     }
 
     // пауза
@@ -95,11 +98,29 @@ public class GameController
         if (world.State != GameState.Playing)
             return;
 
+        _playerSoundController.UpdateTimers(deltaTime);
+
+        float verticalSpeedBeforeCollision = world.Player.Velocity.Y;
+
         _playerController.Update(world, keyboard);
         _trapController.Update(world, deltaTime, soundManager);
         _electricityController.Update(world, deltaTime);
 
         _collisionController.ResolvePlayerCollisions(world);
+
+        _playerSoundController.PlayHighVelocityImpact(
+            _collisionController.LastHorizontalImpactSpeed,
+            soundManager);
+
+        _playerSoundController.UpdateFootsteps(
+            world,
+            keyboard,
+            soundManager);
+
+        _playerSoundController.UpdateLandingSound(
+            world,
+            verticalSpeedBeforeCollision,
+            soundManager);
 
         _portalController.Update(world, mouse, keyboard, deltaTime, soundManager);
 
@@ -107,6 +128,8 @@ public class GameController
         _cubePortalController.Update(world);
 
         _buttonDoorController.Update(world, soundManager);
+
+
 
         CheckExit(world);
         CheckDeath(world);

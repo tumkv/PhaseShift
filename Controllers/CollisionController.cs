@@ -6,7 +6,7 @@ namespace PhaseShift.Controllers;
 
 public class CollisionController
 {
-
+    public float LastHorizontalImpactSpeed { get; private set; }
     private bool IsInsidePortal(GameWorld world, Rectangle bounds)
     {
         return (world.BluePortal != null && bounds.Intersects(world.BluePortal.Bounds)) ||
@@ -15,6 +15,7 @@ public class CollisionController
 
     public void ResolvePlayerCollisions(GameWorld world)
     {
+        LastHorizontalImpactSpeed = 0f;
         var player = world.Player;
 
         Rectangle oldBounds = player.Bounds;
@@ -40,6 +41,8 @@ public class CollisionController
                         player.Position.X = platform.Left - PlayerModel.Width;
                     else if (player.Velocity.X < 0)
                         player.Position.X = platform.Right;
+
+                    LastHorizontalImpactSpeed = Math.Abs(player.Velocity.X);
 
                     player.Velocity.X = 0;
                     player.PreserveMomentum = false;

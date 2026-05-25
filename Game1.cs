@@ -13,6 +13,7 @@ public class Game1 : Game
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
 
+    private PlayerSoundController _playerSoundController;
     private MenuView _menuView;
     private GameWorld _world;
     private HintView _hintView;
@@ -52,6 +53,7 @@ public class Game1 : Game
         _world = new GameWorld();
 
         _playerController = new PlayerController();
+        _playerSoundController = new PlayerSoundController();
 
         _levelController = new LevelController();
         _menuController = new MenuController(_levelController);
@@ -82,7 +84,8 @@ public class Game1 : Game
             _buttonDoorController,
             _trapController,
             _electricityController,
-            _levelProgressController);
+            _levelProgressController,
+            _playerSoundController);
 
         _soundManager = new SoundManager();
 
