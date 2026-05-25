@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using PhaseShift.Models;
 using PhaseShift.Controllers;
 using PhaseShift.Views;
+using PhaseShift.Managers;
 
 namespace PhaseShift;
 
@@ -19,11 +20,12 @@ public class Game1 : Game
     private LevelController _levelController;
     private CollisionController _collisionController;
     private PortalController _portalController;
+    private SoundManager _soundManager;
+
+    private float _musicVolume = 1f;
+    private float _sfxVolume = 1f;
 
     private GameView _gameView;
-
-
-
 
     public Game1()
     {
@@ -39,16 +41,21 @@ public class Game1 : Game
         _graphics.ApplyChanges();
 
         _world = new GameWorld();
+
         _playerController = new PlayerController();
         _levelController = new LevelController();
         _collisionController = new CollisionController();
         _portalController = new PortalController();
+
+        _soundManager = new SoundManager();
 
         base.Initialize();
     }
 
     protected override void LoadContent()
     {
+        _soundManager.LoadContent(Content);
+
         _spriteBatch = new SpriteBatch(GraphicsDevice);
 
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
@@ -66,9 +73,13 @@ public class Game1 : Game
 
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
+        _soundManager.MusicVolume = _musicVolume;
+        _soundManager.SfxVolume = _sfxVolume;
+        _soundManager.UpdateVolumes();
+
         _playerController.Update(_world, keyboard);
         _collisionController.ResolvePlayerCollisions(_world);
-        _portalController.Update(_world, mouse, deltaTime);
+        _portalController.Update(_world, mouse, deltaTime, _soundManager);
 
         base.Update(gameTime);
     }

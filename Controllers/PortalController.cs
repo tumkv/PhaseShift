@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
+using PhaseShift.Managers;
 using PhaseShift.Models;
 using System;
 
@@ -16,7 +17,7 @@ public class PortalController
 
     private MouseState _previousMouseState;
 
-    public void Update(GameWorld world, MouseState mouse, float deltaTime)
+    public void Update(GameWorld world, MouseState mouse, float deltaTime, SoundManager soundManager)
     {
         if (world.PortalExitTimer > 0f)
             world.PortalExitTimer -= deltaTime;
@@ -24,13 +25,13 @@ public class PortalController
         if (mouse.LeftButton == ButtonState.Pressed &&
             _previousMouseState.LeftButton == ButtonState.Released)
         {
-            ShootPortalProjectile(world, mouse.Position, true);
+            ShootPortalProjectile(world, mouse.Position, true, soundManager);
         }
 
         if (mouse.RightButton == ButtonState.Pressed &&
             _previousMouseState.RightButton == ButtonState.Released)
         {
-            ShootPortalProjectile(world, mouse.Position, false);
+            ShootPortalProjectile(world, mouse.Position, false, soundManager);
         }
 
         UpdateProjectiles(world);
@@ -128,7 +129,11 @@ public class PortalController
         return exitDirection * speed;
     }
 
-    private void ShootPortalProjectile(GameWorld world, Point mousePosition, bool isBlue)
+    private void ShootPortalProjectile(
+    GameWorld world,
+    Point mousePosition,
+    bool isBlue,
+    SoundManager soundManager)
     {
         Vector2 playerCenter = new Vector2(
             world.Player.Position.X + PlayerModel.Width / 2,
@@ -141,6 +146,11 @@ public class PortalController
             return;
 
         direction.Normalize();
+
+        if (isBlue)
+            soundManager.PlayBluePortalShoot();
+        else
+            soundManager.PlayOrangePortalShoot();
 
         world.Projectiles.Add(new PortalProjectileModel(
             playerCenter,

@@ -6,6 +6,13 @@ namespace PhaseShift.Controllers;
 
 public class CollisionController
 {
+
+    private bool IsInsidePortal(GameWorld world, Rectangle bounds)
+    {
+        return (world.BluePortal != null && bounds.Intersects(world.BluePortal.Bounds)) ||
+               (world.OrangePortal != null && bounds.Intersects(world.OrangePortal.Bounds));
+    }
+
     public void ResolvePlayerCollisions(GameWorld world)
     {
         var player = world.Player;
@@ -17,25 +24,29 @@ public class CollisionController
 
         Rectangle playerBounds = player.Bounds;
 
-        foreach (var platform in world.Platforms)
+        if (world.PortalExitTimer <= 0f)
         {
-            if (!playerBounds.Intersects(platform))
-                continue;
-
-            bool wasAbove = oldBounds.Bottom <= platform.Top;
-            bool wasBelow = oldBounds.Top >= platform.Bottom;
-
-            if (!wasAbove && !wasBelow)
+            foreach (var platform in world.Platforms)
             {
-                if (player.Velocity.X > 0)
-                    player.Position.X = platform.Left - PlayerModel.Width;
-                else if (player.Velocity.X < 0)
-                    player.Position.X = platform.Right;
+                if (!playerBounds.Intersects(platform))
+                    continue;
 
-                player.Velocity.X = 0;
-                player.PreserveMomentum = false;
+                bool wasAbove = oldBounds.Bottom <= platform.Top;
+                bool wasBelow = oldBounds.Top >= platform.Bottom;
 
-                playerBounds = player.Bounds;
+                if (!wasAbove && !wasBelow)
+                {
+                    if (player.Velocity.X > 0)
+                        player.Position.X = platform.Left - PlayerModel.Width;
+                    else if (player.Velocity.X < 0)
+                        player.Position.X = platform.Right;
+
+                    player.Velocity.X = 0;
+                    player.PreserveMomentum = false;
+                    world.SameDirectionPortalSpeed = 0f;
+
+                    playerBounds = player.Bounds;
+                }
             }
         }
 
@@ -54,6 +65,9 @@ public class CollisionController
             foreach (var platform in world.Platforms)
             {
                 if (!playerBounds.Intersects(platform))
+                    continue;
+
+                if (world.PortalExitTimer > 0f && IsInsidePortal(world, playerBounds))
                     continue;
 
                 if (stepY > 0)

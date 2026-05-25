@@ -15,6 +15,12 @@ public class LevelController
 
         world.BluePortal = null;
         world.OrangePortal = null;
+        world.Projectiles.Clear();
+
+        world.IsTeleporting = false;
+        world.PortalExitTimer = 0f;
+        world.SameDirectionPortalSpeed = 0f;
+
 
         world.CurrentLevel = levelNumber;
 
