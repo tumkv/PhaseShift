@@ -13,6 +13,7 @@ public class Game1 : Game
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
 
+    private MenuView _menuView;
     private GameWorld _world;
     private PlayerController _playerController;
     private LevelController _levelController;
@@ -20,9 +21,9 @@ public class Game1 : Game
     private PortalController _portalController;
     private SoundManager _soundManager;
     private GameController _gameController;
-
-    private float _musicVolume = 1f;
-    private float _sfxVolume = 1f;
+    private MenuController _menuController;
+    private SettingsController _settingsController;
+    private SettingsView _settingsView;
 
     private GameView _gameView;
 
@@ -43,6 +44,8 @@ public class Game1 : Game
 
         _playerController = new PlayerController();
         _levelController = new LevelController();
+        _menuController = new MenuController(_levelController);
+        _settingsController = new SettingsController();
         _collisionController = new CollisionController();
         _portalController = new PortalController();
 
@@ -50,7 +53,9 @@ public class Game1 : Game
             _playerController,
             _collisionController,
             _portalController,
-            _levelController);
+            _levelController,
+            _menuController,
+            _settingsController);
 
         _soundManager = new SoundManager();
 
@@ -60,6 +65,13 @@ public class Game1 : Game
     protected override void LoadContent()
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
+
+        _menuView = new MenuView();
+        _menuView.LoadContent(Content, GraphicsDevice);
+
+        _settingsView = new SettingsView();
+        _settingsView.LoadContent(Content, GraphicsDevice);
+
 
         _gameView = new GameView();
         _gameView.LoadContent(Content, GraphicsDevice);
@@ -76,16 +88,15 @@ public class Game1 : Game
 
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-        _soundManager.MusicVolume = _musicVolume;
-        _soundManager.SfxVolume = _sfxVolume;
-        _soundManager.UpdateVolumes();
-
         _gameController.Update(
             _world,
             keyboard,
             mouse,
             deltaTime,
             _soundManager);
+
+        if (_world.ShouldExitGame)
+            Exit();
 
         base.Update(gameTime);
     }
@@ -96,7 +107,23 @@ public class Game1 : Game
 
         _spriteBatch.Begin();
 
-        _gameView.DrawWorld(_spriteBatch, _world);
+        if (_world.State == GameState.Playing)
+        {
+            _gameView.DrawWorld(_spriteBatch, _world);
+        }
+        else if (_world.State == GameState.Paused)
+        {
+            _gameView.DrawWorld(_spriteBatch, _world);
+            _menuView.Draw(_spriteBatch, _world);
+        }
+        else if (_world.State == GameState.Settings)
+        {
+            _settingsView.Draw(_spriteBatch, _world);
+        }
+        else
+        {
+            _menuView.Draw(_spriteBatch, _world);
+        }
 
         _spriteBatch.End();
 

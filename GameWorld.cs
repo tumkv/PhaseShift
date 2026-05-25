@@ -5,7 +5,12 @@ namespace PhaseShift.Models;
 
 public class GameWorld
 {
-    public GameState State = GameState.Playing;
+    public GameState State = GameState.MainMenu;
+
+    public MenuModel Menu = new MenuModel();
+    public SettingsModel Settings = new SettingsModel();
+
+    public bool ShouldExitGame = false;
 
     public PlayerModel Player = new PlayerModel();
 
@@ -19,10 +24,6 @@ public class GameWorld
 
     public List<PortalProjectileModel> Projectiles = new();
 
-    public bool IsTeleporting = false;
-    public float PortalExitTimer = 0f;
-    public float SameDirectionPortalSpeed = 0f;
-
     public Rectangle Exit;
 
     public int CurrentLevel = 1;
@@ -33,4 +34,8 @@ public class GameWorld
     public bool LevelCompletedScreen;
     public int CompletedLevelNumber;
     public float LevelCompleteAlpha;
+
+    public bool IsTeleporting = false;
+    public float PortalExitTimer = 0f;
+    public float SameDirectionPortalSpeed = 0f;
 }

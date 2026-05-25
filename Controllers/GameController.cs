@@ -10,6 +10,8 @@ public class GameController
     private readonly CollisionController _collisionController;
     private readonly PortalController _portalController;
     private readonly LevelController _levelController;
+    private readonly MenuController _menuController;
+    private readonly SettingsController _settingsController;
 
     private KeyboardState _previousKeyboardState;
 
@@ -17,14 +19,18 @@ public class GameController
         PlayerController playerController,
         CollisionController collisionController,
         PortalController portalController,
-        LevelController levelController)
+        LevelController levelController,
+        MenuController menuController,
+        SettingsController settingsController)
     {
         _playerController = playerController;
         _collisionController = collisionController;
         _portalController = portalController;
         _levelController = levelController;
+        _menuController = menuController;
+        _settingsController = settingsController;
     }
-    
+
     // пауза
     private void HandleGameState(GameWorld world, KeyboardState keyboard)
     {
@@ -32,12 +38,9 @@ public class GameController
             keyboard.IsKeyDown(Keys.Escape) &&
             !_previousKeyboardState.IsKeyDown(Keys.Escape);
 
-        if (escapePressed)
+        if (escapePressed && world.State == GameState.Playing)
         {
-            if (world.State == GameState.Playing)
-                world.State = GameState.Paused;
-            else if (world.State == GameState.Paused)
-                world.State = GameState.Playing;
+            world.State = GameState.Paused;
         }
 
         _previousKeyboardState = keyboard;
@@ -48,8 +51,15 @@ public class GameController
         KeyboardState keyboard,
         MouseState mouse,
         float deltaTime,
-        SoundManager soundManager)
+    SoundManager soundManager)
     {
+        _menuController.Update(world, mouse, keyboard);
+        _settingsController.Update(world, mouse, keyboard);
+
+        soundManager.MusicVolume = world.Settings.MusicVolume;
+        soundManager.SfxVolume = world.Settings.SfxVolume;
+        soundManager.UpdateVolumes();
+
         HandleGameState(world, keyboard);
 
         if (world.State != GameState.Playing)
