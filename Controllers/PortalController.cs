@@ -16,11 +16,23 @@ public class PortalController
     private const float PortalRayStep = 4f;
 
     private MouseState _previousMouseState;
+    private KeyboardState _previousKeyboardState;
 
-    public void Update(GameWorld world, MouseState mouse, float deltaTime, SoundManager soundManager)
+    public void Update(
+        GameWorld world,
+        MouseState mouse,
+        KeyboardState keyboard,
+        float deltaTime,
+        SoundManager soundManager)
     {
         if (world.PortalExitTimer > 0f)
             world.PortalExitTimer -= deltaTime;
+
+        if (keyboard.IsKeyDown(Keys.R) &&
+            !_previousKeyboardState.IsKeyDown(Keys.R))
+        {
+            ResetPortals(world, soundManager);
+        }
 
         if (mouse.LeftButton == ButtonState.Pressed &&
             _previousMouseState.LeftButton == ButtonState.Released)
@@ -37,6 +49,7 @@ public class PortalController
         UpdateProjectiles(world, soundManager);
         UpdateTeleportation(world);
 
+        _previousKeyboardState = keyboard;
         _previousMouseState = mouse;
     }
 
@@ -129,11 +142,31 @@ public class PortalController
         return exitDirection * speed;
     }
 
+    private void ResetPortals(GameWorld world, SoundManager soundManager)
+    {
+        if (world.BluePortal != null || world.OrangePortal != null)
+        {
+            soundManager.PlayPortalClose();
+        }
+
+        world.BluePortal = null;
+        world.OrangePortal = null;
+
+        world.IsTeleporting = false;
+        world.PortalExitTimer = 0f;
+        world.SameDirectionPortalSpeed = 0f;
+
+        world.Player.PreserveMomentum = false;
+
+        if (world.Cube.HasCube)
+            world.Cube.IsTeleporting = false;
+    }
+
     private void ShootPortalProjectile(
-    GameWorld world,
-    Point mousePosition,
-    bool isBlue,
-    SoundManager soundManager)
+        GameWorld world,
+        Point mousePosition,
+        bool isBlue,
+        SoundManager soundManager)
     {
         Vector2 playerCenter = new Vector2(
             world.Player.Position.X + PlayerModel.Width / 2,

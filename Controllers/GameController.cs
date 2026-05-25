@@ -17,6 +17,7 @@ public class GameController
     private readonly TrapController _trapController;
     private readonly ElectricityController _electricityController;
     private readonly LevelProgressController _levelProgressController;
+    private readonly CubePortalController _cubePortalController;
 
     private KeyboardState _previousKeyboardState;
 
@@ -28,6 +29,7 @@ public class GameController
         MenuController menuController,
         SettingsController settingsController,
         CubeController cubeController,
+        CubePortalController cubePortalController,
         ButtonDoorController buttonDoorController,
         TrapController trapController,
         ElectricityController electricityController,
@@ -40,6 +42,7 @@ public class GameController
         _menuController = menuController;
         _settingsController = settingsController;
         _cubeController = cubeController;
+        _cubePortalController = cubePortalController;
         _buttonDoorController = buttonDoorController;
         _trapController = trapController;
         _electricityController = electricityController;
@@ -53,9 +56,16 @@ public class GameController
             keyboard.IsKeyDown(Keys.Escape) &&
             !_previousKeyboardState.IsKeyDown(Keys.Escape);
 
-        if (escapePressed && world.State == GameState.Playing)
+        if (escapePressed)
         {
-            world.State = GameState.Paused;
+            if (world.State == GameState.Playing)
+            {
+                world.State = GameState.Paused;
+            }
+            else if (world.State == GameState.Paused)
+            {
+                world.State = GameState.Playing;
+            }
         }
 
         _previousKeyboardState = keyboard;
@@ -91,8 +101,11 @@ public class GameController
 
         _collisionController.ResolvePlayerCollisions(world);
 
-        _portalController.Update(world, mouse, deltaTime, soundManager);
+        _portalController.Update(world, mouse, keyboard, deltaTime, soundManager);
+
         _cubeController.Update(world, keyboard, mouse, soundManager);
+        _cubePortalController.Update(world);
+
         _buttonDoorController.Update(world, soundManager);
 
         CheckExit(world);

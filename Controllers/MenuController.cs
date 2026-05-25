@@ -111,12 +111,6 @@ public class MenuController
         menu.HoverPauseSettings = menu.PauseSettingsButton.Contains(mousePoint);
         menu.HoverMainMenu = menu.MainMenuButton.Contains(mousePoint);
 
-        if (EscapePressed(keyboard))
-        {
-            world.State = GameState.Playing;
-            return;
-        }
-
         if (!LeftMouseClicked(mouse))
             return;
 

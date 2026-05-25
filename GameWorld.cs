@@ -13,6 +13,7 @@ public class GameWorld
     public bool ShouldExitGame = false;
 
     public PlayerModel Player = new PlayerModel();
+    public HintModel Hint = new HintModel();
 
     public CubeModel Cube = new CubeModel();
     public ButtonDoorModel ButtonDoor = new ButtonDoorModel();

@@ -7,6 +7,9 @@ public class LevelController
 {
     public void LoadLevel(GameWorld world, int levelNumber)
     {
+        world.Hint.IsVisible = false;
+        world.Hint.Position = Vector2.Zero;
+
         world.Platforms.Clear();
         world.BackgroundBlocks.Clear();
         world.Spikes.Clear();
@@ -69,6 +72,10 @@ public class LevelController
     private void LoadLevel1(GameWorld world)
     {
         world.Player.Position = new Vector2(120, 760);
+
+        world.Hint.IsVisible = true;
+        world.Hint.Position = new Vector2(550, 480);
+
         world.Exit = new Rectangle(1450, 780, 50, 80);
 
         // границы комнаты

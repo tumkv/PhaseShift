@@ -15,6 +15,7 @@ public class Game1 : Game
 
     private MenuView _menuView;
     private GameWorld _world;
+    private HintView _hintView;
     private PlayerController _playerController;
     private LevelController _levelController;
     private CollisionController _collisionController;
@@ -29,6 +30,9 @@ public class Game1 : Game
     private TrapController _trapController;
     private ElectricityController _electricityController;
     private LevelProgressController _levelProgressController;
+    private CubePortalController _cubePortalController;
+    private CrosshairView _crosshairView;
+    private LevelProgressView _levelProgressView;
 
     private GameView _gameView;
 
@@ -57,7 +61,9 @@ public class Game1 : Game
         _portalController = new PortalController();
 
         _cubeController = new CubeController();
+        _cubePortalController = new CubePortalController();
         _buttonDoorController = new ButtonDoorController();
+
 
         _trapController = new TrapController();
         _electricityController = new ElectricityController();
@@ -72,6 +78,7 @@ public class Game1 : Game
             _menuController,
             _settingsController,
             _cubeController,
+            _cubePortalController,
             _buttonDoorController,
             _trapController,
             _electricityController,
@@ -92,9 +99,17 @@ public class Game1 : Game
         _settingsView = new SettingsView();
         _settingsView.LoadContent(Content, GraphicsDevice);
 
+        _crosshairView = new CrosshairView();
+        _crosshairView.LoadContent(Content);
+
+        _levelProgressView = new LevelProgressView();
+        _levelProgressView.LoadContent(Content, GraphicsDevice);
 
         _gameView = new GameView();
         _gameView.LoadContent(Content, GraphicsDevice);
+
+        _hintView = new HintView();
+        _hintView.LoadContent(Content, GraphicsDevice);
 
         _soundManager.LoadContent(Content);
 
@@ -105,6 +120,8 @@ public class Game1 : Game
     {
         var keyboard = Keyboard.GetState();
         var mouse = Mouse.GetState();
+
+        IsMouseVisible = _world.State != GameState.Playing;
 
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
@@ -127,13 +144,20 @@ public class Game1 : Game
 
         _spriteBatch.Begin();
 
-        if (_world.State == GameState.Playing)
+        if (_world.Progress.LevelCompletedScreen)
+        {
+            _levelProgressView.Draw(_spriteBatch, _world);
+        }
+        else if (_world.State == GameState.Playing)
         {
             _gameView.DrawWorld(_spriteBatch, _world);
+            _hintView.Draw(_spriteBatch, _world);
+            _crosshairView.Draw(_spriteBatch, _world);
         }
         else if (_world.State == GameState.Paused)
         {
             _gameView.DrawWorld(_spriteBatch, _world);
+            _hintView.Draw(_spriteBatch, _world);
             _menuView.Draw(_spriteBatch, _world);
         }
         else if (_world.State == GameState.Settings)

@@ -95,7 +95,16 @@ public class GameView
         if (!world.Cube.HasCube)
             return;
 
-        spriteBatch.Draw(_pixel, world.Cube.Bounds, Color.SandyBrown);
+        Rectangle outerCube = world.Cube.Bounds;
+
+        Rectangle innerCube = new Rectangle(
+            outerCube.X + 6,
+            outerCube.Y + 6,
+            outerCube.Width - 12,
+            outerCube.Height - 12);
+
+        spriteBatch.Draw(_pixel, outerCube, Color.DarkSlateGray);
+        spriteBatch.Draw(_pixel, innerCube, Color.Beige);
     }
 
     private void DrawButtonDoor(SpriteBatch spriteBatch, GameWorld world)
