@@ -21,6 +21,26 @@ public class GameView
         foreach (var platform in world.Platforms)
             spriteBatch.Draw(_pixel, platform, Color.Gray);
 
+        foreach (var projectile in world.Projectiles)
+        {
+            Rectangle projectileRect = new Rectangle(
+                (int)projectile.Position.X - 4,
+                (int)projectile.Position.Y - 4,
+                8,
+                8);
+
+            spriteBatch.Draw(
+                _pixel,
+                projectileRect,
+                projectile.IsBlue ? Color.Cyan : Color.Orange);
+        }
+
+        if (world.BluePortal != null)
+            spriteBatch.Draw(_pixel, world.BluePortal.Bounds, Color.Cyan);
+
+        if (world.OrangePortal != null)
+            spriteBatch.Draw(_pixel, world.OrangePortal.Bounds, Color.Orange);
+
         foreach (var spike in world.Spikes)
             spriteBatch.Draw(_pixel, spike, Color.Red);
 

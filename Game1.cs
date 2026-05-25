@@ -18,7 +18,10 @@ public class Game1 : Game
     private PlayerController _playerController;
     private LevelController _levelController;
     private CollisionController _collisionController;
+    private PortalController _portalController;
+
     private GameView _gameView;
+
 
 
 
@@ -39,6 +42,7 @@ public class Game1 : Game
         _playerController = new PlayerController();
         _levelController = new LevelController();
         _collisionController = new CollisionController();
+        _portalController = new PortalController();
 
         base.Initialize();
     }
@@ -57,12 +61,14 @@ public class Game1 : Game
 
     protected override void Update(GameTime gameTime)
 {
-    var keyboard = Keyboard.GetState();
+        var keyboard = Keyboard.GetState();
+        var mouse = Mouse.GetState();
 
-    _playerController.Update(_world, keyboard);
-    _collisionController.ResolvePlayerCollisions(_world);
+        _playerController.Update(_world, keyboard);
+        _collisionController.ResolvePlayerCollisions(_world);
+        _portalController.Update(_world, mouse);
 
-    base.Update(gameTime);
+        base.Update(gameTime);
 }
 
     protected override void Draw(GameTime gameTime)
