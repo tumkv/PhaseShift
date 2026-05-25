@@ -217,3 +217,43 @@
 /importer:WavImporter
 /processor:SoundEffectProcessor
 /build:land9.wav
+
+#begin highvelocity_impact1.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:highvelocity_impact1.wav
+
+#begin highvelocity_impact2.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:highvelocity_impact2.wav
+
+#begin highvelocity_impact3.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:highvelocity_impact3.wav
+
+#begin highvelocity_impact4.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:highvelocity_impact4.wav
+
+#begin portalinvalidsurface1.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:portalinvalidsurface1.wav
+
+#begin portalinvalidsurface2.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:portalinvalidsurface2.wav
+
+#begin moving_trap.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:moving_trap.wav
+
+#begin door_open.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:door_open.wav

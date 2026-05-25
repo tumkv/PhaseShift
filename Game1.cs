@@ -92,6 +92,31 @@ public class Game1 : Game
 
     private List<SoundEffect> _footstepSounds = new();
     private List<SoundEffect> _landingSounds = new();
+    private List<SoundEffect> _highVelocityImpactSounds = new();
+    private List<SoundEffect> _portalInvalidSurfaceSounds = new();
+
+    private float _footstepTimer = 0f;
+    private const float FootstepInterval = 0.35f;
+    private float _footstepCooldown = 0f;
+
+    private bool _wasOnGround = false;
+    private const float MinLandingSpeed = 3f;
+
+    private const float PortalInvalidSurfaceVolume = 0.7f;
+
+    private const float HighVelocityImpactMinSpeed = 5f;
+    private const float HighVelocityImpactVolume = 0.55f;
+
+    private float _impactCooldown = 0f;
+    private const float ImpactCooldownTime = 0.35f;
+
+    private SoundEffect _movingTrapSound;
+    private SoundEffectInstance _movingTrapInstance;
+
+    private const float MovingTrapVolume = 0.25f;
+
+    private SoundEffect _doorOpenSound;
+
 
 
     private Random _random = new Random();
@@ -105,6 +130,79 @@ public class Game1 : Game
         int index = _random.Next(sounds.Count);
 
         sounds[index].Play(_sfxVolume, 0f, 0f);
+    }
+
+    private void UpdateFootsteps(float deltaTime, KeyboardState keyboard)
+    {
+        if (_footstepCooldown > 0f)
+            _footstepCooldown -= deltaTime;
+
+        bool isHoldingMoveKey =
+            keyboard.IsKeyDown(Keys.A) ||
+            keyboard.IsKeyDown(Keys.D);
+
+        bool canStep =
+            isHoldingMoveKey &&
+            _isOnGround &&
+            Math.Abs(_playerVelocity.X) > 0.3f &&
+            !_isFading &&
+            !_levelCompletedScreen;
+
+        if (!canStep)
+            return;
+
+        if (_footstepCooldown <= 0f)
+        {
+            PlayRandomSound(_footstepSounds);
+            _footstepCooldown = FootstepInterval;
+        }
+    }
+
+    private void UpdateLandingSound(float verticalSpeedBeforeCollision)
+    {
+        bool justLanded = !_wasOnGround && _isOnGround;
+
+        if (justLanded && verticalSpeedBeforeCollision > MinLandingSpeed)
+        {
+            PlayRandomSound(_landingSounds);
+        }
+
+        _wasOnGround = _isOnGround;
+    }
+
+    private void PlayHighVelocityImpact(float impactSpeed)
+    {
+        if (_impactCooldown > 0f)
+            return;
+
+        if (impactSpeed < HighVelocityImpactMinSpeed)
+            return;
+
+        if (_highVelocityImpactSounds.Count == 0)
+            return;
+
+        float speedVolume = Math.Clamp(impactSpeed / 16f, 0.4f, 1f);
+
+        float finalVolume = _sfxVolume * HighVelocityImpactVolume * speedVolume;
+        finalVolume = Math.Clamp(finalVolume, 0f, 1f);
+
+        int index = _random.Next(_highVelocityImpactSounds.Count);
+        _highVelocityImpactSounds[index].Play(finalVolume, 0f, 0f);
+
+        _impactCooldown = ImpactCooldownTime;
+    }
+
+    private void PlayPortalInvalidSurfaceSound()
+    {
+        if (_portalInvalidSurfaceSounds.Count == 0)
+            return;
+
+        int index = _random.Next(_portalInvalidSurfaceSounds.Count);
+
+        float finalVolume = _sfxVolume * PortalInvalidSurfaceVolume;
+        finalVolume = Math.Clamp(finalVolume, 0f, 1f);
+
+        _portalInvalidSurfaceSounds[index].Play(finalVolume, 0f, 0f);
     }
 
     #endregion
@@ -387,14 +485,18 @@ public class Game1 : Game
 
                 if (_hasMovingSpikeTrap &&
                     (hitIndex == _movingTrapPlatformIndex || hitIndex == _movingTrapSupportIndex))
+                {
+                    PlayPortalInvalidSurfaceSound();
                     return;
+                }
 
                 Rectangle platform = _platforms[hitIndex];
 
                 if (_hasButtonDoorLevel &&
                     hitIndex == _doorPlatformIndex)
                 {
-                        return;
+                    PlayPortalInvalidSurfaceSound();
+                    return;
                 }
 
                 bool isWall = platform.Height > platform.Width;
@@ -453,24 +555,39 @@ public class Game1 : Game
                 }
 
                 if (PortalTouchesElectricZone(newPortal))
+                {
+                    PlayPortalInvalidSurfaceSound();
                     return;
+                }
 
                 if (PortalTouchesButton(newPortal))
+                {
+                    PlayPortalInvalidSurfaceSound();
                     return;
+                }
 
                 if (isWall)
                 {
                     if (newPortal.Top <= platform.Top || newPortal.Bottom >= platform.Bottom)
+                    {
+                        PlayPortalInvalidSurfaceSound();
                         return;
+                    }
                 }
                 else
                 {
                     if (newPortal.Left <= platform.Left || newPortal.Right >= platform.Right)
+                    {
+                        PlayPortalInvalidSurfaceSound();
                         return;
+                    }
                 }
 
                 if (PortalOverlapsOtherPlatforms(newPortal, platform))
+                {
+                    PlayPortalInvalidSurfaceSound();
                     return;
+                }
 
                 const int magnetDistance = 5;
 
@@ -566,6 +683,7 @@ public class Game1 : Game
 
                 if (PointInsideBackgroundBlock(point))
                 {
+                    PlayPortalInvalidSurfaceSound();
                     shouldRemove = true;
                     break;
                 }
@@ -770,6 +888,9 @@ public class Game1 : Game
         if (buttonPressed && !_buttonWasPressed)
         {
             _buttonPressSound.Play(_sfxVolume, 0f, 0f);
+
+            if (!_doorOpen)
+                _doorOpenSound.Play(_sfxVolume, 0f, 0f);
         }
 
         if (!buttonPressed && _buttonWasPressed)
@@ -904,7 +1025,22 @@ public class Game1 : Game
     private void UpdateMovingSpikeTrap(float deltaTime)
     {
         if (!_hasMovingSpikeTrap)
+        {
+            if (_movingTrapInstance != null &&
+                _movingTrapInstance.State == SoundState.Playing)
+            {
+                _movingTrapInstance.Stop();
+            }
+
             return;
+        }
+
+        if (_movingTrapInstance != null &&
+            _movingTrapInstance.State != SoundState.Playing)
+        {
+            _movingTrapInstance.Volume = _sfxVolume * MovingTrapVolume;
+            _movingTrapInstance.Play();
+        }
 
         _movingTrapY += _movingTrapDirection * TrapSpeed * deltaTime;
 
@@ -1009,6 +1145,13 @@ public class Game1 : Game
         _platforms.Clear();
         _backgroundBlocks.Clear();
         _spikes.Clear();
+
+        if (_movingTrapInstance != null &&
+            _movingTrapInstance.State == SoundState.Playing)
+        {
+            _movingTrapInstance.Stop();
+        }
+
         _hasMovingSpikeTrap = false;
         _noPortalSurfaces.Clear();
         _electricZones.Clear();
@@ -1031,6 +1174,7 @@ public class Game1 : Game
         _sameDirectionPortalSpeed = 0f;
         _cubeHoldInstance.Stop();
         _buttonWasPressed = false;
+        
 
         if (levelNumber == 1)
         {
@@ -1267,6 +1411,8 @@ public class Game1 : Game
             _platforms.Add(new Rectangle(1320, 300, 240, 40));
         }
 
+        _footstepCooldown = 0f;
+        _wasOnGround = false;
         _playerVelocity = Vector2.Zero;
     }
     #endregion
@@ -1352,6 +1498,30 @@ public class Game1 : Game
         _landingSounds.Add(Content.Load<SoundEffect>("land8"));
         _landingSounds.Add(Content.Load<SoundEffect>("land9"));
 
+        _footstepSounds.Add(Content.Load<SoundEffect>("footstep2"));
+        _footstepSounds.Add(Content.Load<SoundEffect>("footstep3"));
+        _footstepSounds.Add(Content.Load<SoundEffect>("footstep4"));
+        _footstepSounds.Add(Content.Load<SoundEffect>("footstep5"));
+        _footstepSounds.Add(Content.Load<SoundEffect>("footstep6"));
+        _footstepSounds.Add(Content.Load<SoundEffect>("footstep7"));
+        _footstepSounds.Add(Content.Load<SoundEffect>("footstep8"));
+        _footstepSounds.Add(Content.Load<SoundEffect>("footstep9"));
+
+        _highVelocityImpactSounds.Add(Content.Load<SoundEffect>("highvelocity_impact1"));
+        _highVelocityImpactSounds.Add(Content.Load<SoundEffect>("highvelocity_impact2"));
+        _highVelocityImpactSounds.Add(Content.Load<SoundEffect>("highvelocity_impact3"));
+        _highVelocityImpactSounds.Add(Content.Load<SoundEffect>("highvelocity_impact4"));
+
+        _portalInvalidSurfaceSounds.Add(Content.Load<SoundEffect>("portalinvalidsurface1"));
+        _portalInvalidSurfaceSounds.Add(Content.Load<SoundEffect>("portalinvalidsurface2"));
+
+        _doorOpenSound = Content.Load<SoundEffect>("door_open");
+
+        _movingTrapSound = Content.Load<SoundEffect>("moving_trap");
+        _movingTrapInstance = _movingTrapSound.CreateInstance();
+        _movingTrapInstance.IsLooped = true;
+        _movingTrapInstance.Volume = _sfxVolume * MovingTrapVolume;
+
 
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
@@ -1366,6 +1536,17 @@ public class Game1 : Game
         IsMouseVisible = _gameState != GameState.Playing;
 
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        float verticalSpeedBeforeCollision = _playerVelocity.Y;
+        float playerXBeforeMovement = _playerPosition.X;
+
+        // звук удара
+        if (_impactCooldown > 0f)
+            _impactCooldown -= deltaTime;
+
+        // звук платформы
+        if (_movingTrapInstance != null)
+            _movingTrapInstance.Volume = _sfxVolume * MovingTrapVolume;
+
 
         // главное меню
 
@@ -1732,6 +1913,7 @@ public class Game1 : Game
         // движение по X
         _playerPosition.X += _playerVelocity.X;
         var playerBounds = PlayerBounds;
+        float impactSpeed = Math.Abs(_playerVelocity.X);
 
         if (_portalExitTimer <= 0)
         {
@@ -1749,10 +1931,12 @@ public class Game1 : Game
                         else if (_playerVelocity.X < 0)
                             _playerPosition.X = platform.Right;
 
+
+                        PlayHighVelocityImpact(impactSpeed);
                         _playerVelocity.X = 0;
                         _preserveMomentum = false;
                         _sameDirectionPortalSpeed = 0f;
-
+                        
                         playerBounds = PlayerBounds;
                     }
                 }
@@ -1799,6 +1983,9 @@ public class Game1 : Game
                 break;
             }
         }
+
+        UpdateFootsteps(deltaTime, keyboard);
+        UpdateLandingSound(verticalSpeedBeforeCollision);
 
         if (_hasCube)
         {
