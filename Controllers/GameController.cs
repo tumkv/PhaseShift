@@ -11,6 +11,8 @@ public class GameController
     private readonly PortalController _portalController;
     private readonly LevelController _levelController;
 
+    private KeyboardState _previousKeyboardState;
+
     public GameController(
         PlayerController playerController,
         CollisionController collisionController,
@@ -22,6 +24,24 @@ public class GameController
         _portalController = portalController;
         _levelController = levelController;
     }
+    
+    // пауза
+    private void HandleGameState(GameWorld world, KeyboardState keyboard)
+    {
+        bool escapePressed =
+            keyboard.IsKeyDown(Keys.Escape) &&
+            !_previousKeyboardState.IsKeyDown(Keys.Escape);
+
+        if (escapePressed)
+        {
+            if (world.State == GameState.Playing)
+                world.State = GameState.Paused;
+            else if (world.State == GameState.Paused)
+                world.State = GameState.Playing;
+        }
+
+        _previousKeyboardState = keyboard;
+    }
 
     public void Update(
         GameWorld world,
@@ -30,6 +50,11 @@ public class GameController
         float deltaTime,
         SoundManager soundManager)
     {
+        HandleGameState(world, keyboard);
+
+        if (world.State != GameState.Playing)
+            return;
+
         _playerController.Update(world, keyboard);
         _collisionController.ResolvePlayerCollisions(world);
         _portalController.Update(world, mouse, deltaTime, soundManager);

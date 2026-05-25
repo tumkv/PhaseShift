@@ -5,6 +5,8 @@ namespace PhaseShift.Models;
 
 public class GameWorld
 {
+    public GameState State = GameState.Playing;
+
     public PlayerModel Player = new PlayerModel();
 
     public List<Rectangle> Platforms = new();

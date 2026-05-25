@@ -13,8 +13,6 @@ public class Game1 : Game
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
 
-    private Texture2D _pixel;
-
     private GameWorld _world;
     private PlayerController _playerController;
     private LevelController _levelController;
@@ -61,14 +59,12 @@ public class Game1 : Game
 
     protected override void LoadContent()
     {
-        _soundManager.LoadContent(Content);
-
         _spriteBatch = new SpriteBatch(GraphicsDevice);
 
-        _pixel = new Texture2D(GraphicsDevice, 1, 1);
-        _pixel.SetData(new[] { Color.White });
+        _gameView = new GameView();
+        _gameView.LoadContent(Content, GraphicsDevice);
 
-        _gameView = new GameView(_pixel);
+        _soundManager.LoadContent(Content);
 
         _levelController.LoadLevel(_world, 1);
     }
