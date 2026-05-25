@@ -12,6 +12,10 @@ public class GameController
     private readonly LevelController _levelController;
     private readonly MenuController _menuController;
     private readonly SettingsController _settingsController;
+    private readonly CubeController _cubeController;
+    private readonly ButtonDoorController _buttonDoorController;
+    private readonly TrapController _trapController;
+    private readonly ElectricityController _electricityController;
 
     private KeyboardState _previousKeyboardState;
 
@@ -21,7 +25,11 @@ public class GameController
         PortalController portalController,
         LevelController levelController,
         MenuController menuController,
-        SettingsController settingsController)
+        SettingsController settingsController,
+        CubeController cubeController,
+        ButtonDoorController buttonDoorController,
+        TrapController trapController,
+        ElectricityController electricityController)
     {
         _playerController = playerController;
         _collisionController = collisionController;
@@ -29,6 +37,10 @@ public class GameController
         _levelController = levelController;
         _menuController = menuController;
         _settingsController = settingsController;
+        _cubeController = cubeController;
+        _buttonDoorController = buttonDoorController;
+        _trapController = trapController;
+        _electricityController = electricityController;
     }
 
     // пауза
@@ -51,7 +63,7 @@ public class GameController
         KeyboardState keyboard,
         MouseState mouse,
         float deltaTime,
-    SoundManager soundManager)
+        SoundManager soundManager)
     {
         _menuController.Update(world, mouse, keyboard);
         _settingsController.Update(world, mouse, keyboard);
@@ -66,9 +78,15 @@ public class GameController
             return;
 
         _playerController.Update(world, keyboard);
-        _collisionController.ResolvePlayerCollisions(world);
-        _portalController.Update(world, mouse, deltaTime, soundManager);
+        _trapController.Update(world, deltaTime, soundManager);
+        _electricityController.Update(world, deltaTime);
 
+        _collisionController.ResolvePlayerCollisions(world);
+
+        _portalController.Update(world, mouse, deltaTime, soundManager);
+        _cubeController.Update(world, keyboard, mouse, soundManager);
+        _buttonDoorController.Update(world, soundManager);
+        
         CheckExit(world);
         CheckDeath(world);
     }
@@ -107,7 +125,7 @@ public class GameController
         }
 
         // смерть от электричества
-        if (world.ElectricActive)
+        if (world.Electricity.Active)
         {
             foreach (var electricZone in world.ElectricZones)
             {

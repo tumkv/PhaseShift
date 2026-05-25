@@ -36,6 +36,8 @@ public class GameView
 
 
 
+
+
     public void DrawWorld(SpriteBatch spriteBatch, GameWorld world)
     {
         spriteBatch.Draw(
@@ -45,11 +47,15 @@ public class GameView
 
         DrawBackgroundBlocks(spriteBatch, world);
         DrawPlatforms(spriteBatch, world);
+        DrawButtonDoor(spriteBatch, world);
+        DrawElectricity(spriteBatch, world);
         DrawExit(spriteBatch, world);
         DrawProjectiles(spriteBatch, world);
         DrawPortals(spriteBatch, world);
         DrawSpikes(spriteBatch, world);
+        DrawCube(spriteBatch, world);
         DrawPlayer(spriteBatch, world);
+
 
         if (world.State == GameState.Paused)
             DrawPause(spriteBatch);
@@ -82,6 +88,43 @@ public class GameView
     private void DrawExit(SpriteBatch spriteBatch, GameWorld world)
     {
         spriteBatch.Draw(_pixel, world.Exit, Color.Green);
+    }
+
+    private void DrawCube(SpriteBatch spriteBatch, GameWorld world)
+    {
+        if (!world.Cube.HasCube)
+            return;
+
+        spriteBatch.Draw(_pixel, world.Cube.Bounds, Color.SandyBrown);
+    }
+
+    private void DrawButtonDoor(SpriteBatch spriteBatch, GameWorld world)
+    {
+        var buttonDoor = world.ButtonDoor;
+
+        if (!buttonDoor.HasButtonDoorLevel)
+            return;
+
+        Color buttonColor = buttonDoor.DoorOpen
+            ? Color.LimeGreen
+            : Color.Red;
+
+        spriteBatch.Draw(_pixel, buttonDoor.Button, buttonColor);
+
+        if (!buttonDoor.DoorOpen)
+            spriteBatch.Draw(_pixel, buttonDoor.Door, Color.DarkSlateGray);
+    }
+
+    private void DrawElectricity(SpriteBatch spriteBatch, GameWorld world)
+    {
+        foreach (var electricZone in world.ElectricZones)
+        {
+            Color electricColor = world.Electricity.Active
+                ? Color.Cyan
+                : Color.DarkSlateGray;
+
+            spriteBatch.Draw(_pixel, electricZone, electricColor);
+        }
     }
 
     private void DrawSpikes(SpriteBatch spriteBatch, GameWorld world)

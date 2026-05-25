@@ -24,6 +24,10 @@ public class Game1 : Game
     private MenuController _menuController;
     private SettingsController _settingsController;
     private SettingsView _settingsView;
+    private CubeController _cubeController;
+    private ButtonDoorController _buttonDoorController;
+    private TrapController _trapController;
+    private ElectricityController _electricityController;
 
     private GameView _gameView;
 
@@ -48,6 +52,10 @@ public class Game1 : Game
         _settingsController = new SettingsController();
         _collisionController = new CollisionController();
         _portalController = new PortalController();
+        _cubeController = new CubeController();
+        _buttonDoorController = new ButtonDoorController();
+        _trapController = new TrapController();
+        _electricityController = new ElectricityController();
 
         _gameController = new GameController(
             _playerController,
@@ -55,7 +63,11 @@ public class Game1 : Game
             _portalController,
             _levelController,
             _menuController,
-            _settingsController);
+            _settingsController,
+            _cubeController,
+            _buttonDoorController,
+            _trapController,
+            _electricityController);
 
         _soundManager = new SoundManager();
 

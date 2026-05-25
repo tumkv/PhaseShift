@@ -14,6 +14,11 @@ public class GameWorld
 
     public PlayerModel Player = new PlayerModel();
 
+    public CubeModel Cube = new CubeModel();
+    public ButtonDoorModel ButtonDoor = new ButtonDoorModel();
+    public MovingSpikeTrapModel MovingSpikeTrap = new MovingSpikeTrapModel();
+    public ElectricityModel Electricity = new ElectricityModel();
+
     public List<Rectangle> Platforms = new();
     public List<Rectangle> BackgroundBlocks = new();
     public List<Rectangle> Spikes = new();
