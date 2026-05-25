@@ -16,7 +16,9 @@ public class Game1 : Game
 
     private GameWorld _world;
     private PlayerController _playerController;
+    private LevelController _levelController;
     private GameView _gameView;
+
 
     public Game1()
     {
@@ -33,6 +35,7 @@ public class Game1 : Game
 
         _world = new GameWorld();
         _playerController = new PlayerController();
+        _levelController = new LevelController();
 
         base.Initialize();
     }
@@ -46,7 +49,7 @@ public class Game1 : Game
 
         _gameView = new GameView(_pixel);
 
-        LoadLevel(1);
+        _levelController.LoadLevel(_world, 1);
     }
 
     protected override void Update(GameTime gameTime)
@@ -69,21 +72,5 @@ public class Game1 : Game
         _spriteBatch.End();
 
         base.Draw(gameTime);
-    }
-
-    private void LoadLevel(int levelNumber)
-    {
-        _world.Platforms.Clear();
-        _world.BackgroundBlocks.Clear();
-        _world.Spikes.Clear();
-
-        _world.Player.Position = new Vector2(120, 760);
-        _world.Player.Velocity = Vector2.Zero;
-        _world.Exit = new Rectangle(1450, 780, 50, 80);
-
-        _world.Platforms.Add(new Rectangle(0, 860, 1600, 40));
-        _world.Platforms.Add(new Rectangle(0, 0, 40, 900));
-        _world.Platforms.Add(new Rectangle(1560, 0, 40, 900));
-        _world.Platforms.Add(new Rectangle(0, 0, 1600, 40));
     }
 }
