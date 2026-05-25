@@ -17,7 +17,9 @@ public class Game1 : Game
     private GameWorld _world;
     private PlayerController _playerController;
     private LevelController _levelController;
+    private CollisionController _collisionController;
     private GameView _gameView;
+
 
 
     public Game1()
@@ -36,6 +38,7 @@ public class Game1 : Game
         _world = new GameWorld();
         _playerController = new PlayerController();
         _levelController = new LevelController();
+        _collisionController = new CollisionController();
 
         base.Initialize();
     }
@@ -53,13 +56,14 @@ public class Game1 : Game
     }
 
     protected override void Update(GameTime gameTime)
-    {
-        var keyboard = Keyboard.GetState();
+{
+    var keyboard = Keyboard.GetState();
 
-        _playerController.Update(_world, keyboard);
+    _playerController.Update(_world, keyboard);
+    _collisionController.ResolvePlayerCollisions(_world);
 
-        base.Update(gameTime);
-    }
+    base.Update(gameTime);
+}
 
     protected override void Draw(GameTime gameTime)
     {
