@@ -28,6 +28,7 @@ public class Game1 : Game
     private ButtonDoorController _buttonDoorController;
     private TrapController _trapController;
     private ElectricityController _electricityController;
+    private LevelProgressController _levelProgressController;
 
     private GameView _gameView;
 
@@ -47,15 +48,21 @@ public class Game1 : Game
         _world = new GameWorld();
 
         _playerController = new PlayerController();
+
         _levelController = new LevelController();
         _menuController = new MenuController(_levelController);
         _settingsController = new SettingsController();
+
         _collisionController = new CollisionController();
         _portalController = new PortalController();
+
         _cubeController = new CubeController();
         _buttonDoorController = new ButtonDoorController();
+
         _trapController = new TrapController();
         _electricityController = new ElectricityController();
+
+        _levelProgressController = new LevelProgressController(_levelController);
 
         _gameController = new GameController(
             _playerController,
@@ -67,7 +74,8 @@ public class Game1 : Game
             _cubeController,
             _buttonDoorController,
             _trapController,
-            _electricityController);
+            _electricityController,
+            _levelProgressController);
 
         _soundManager = new SoundManager();
 

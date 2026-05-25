@@ -19,6 +19,8 @@ public class GameWorld
     public MovingSpikeTrapModel MovingSpikeTrap = new MovingSpikeTrapModel();
     public ElectricityModel Electricity = new ElectricityModel();
 
+    public LevelProgressModel Progress = new LevelProgressModel();
+
     public List<Rectangle> Platforms = new();
     public List<Rectangle> BackgroundBlocks = new();
     public List<Rectangle> Spikes = new();
@@ -35,10 +37,6 @@ public class GameWorld
 
     public bool ElectricActive;
     public float ElectricTimer;
-
-    public bool LevelCompletedScreen;
-    public int CompletedLevelNumber;
-    public float LevelCompleteAlpha;
 
     public bool IsTeleporting = false;
     public float PortalExitTimer = 0f;

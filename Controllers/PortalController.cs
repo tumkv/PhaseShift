@@ -34,7 +34,7 @@ public class PortalController
             ShootPortalProjectile(world, mouse.Position, false, soundManager);
         }
 
-        UpdateProjectiles(world);
+        UpdateProjectiles(world, soundManager);
         UpdateTeleportation(world);
 
         _previousMouseState = mouse;
@@ -158,7 +158,7 @@ public class PortalController
             isBlue));
     }
 
-    private void UpdateProjectiles(GameWorld world)
+    private void UpdateProjectiles(GameWorld world, SoundManager soundManager)
     {
         for (int i = world.Projectiles.Count - 1; i >= 0; i--)
         {
@@ -181,11 +181,24 @@ public class PortalController
 
                 Point point = projectile.Position.ToPoint();
 
+                if (PointInsideBackgroundBlock(world, point))
+                {
+                    soundManager.PlayPortalInvalidSurface();
+                    shouldRemove = true;
+                    break;
+                }
+
                 foreach (var platform in world.Platforms)
                 {
                     if (platform.Contains(point))
                     {
-                        PlaceSimplePortal(world, projectile.IsBlue, point, projectile.Direction, platform);
+                        PlacePortal(
+                            world,
+                            projectile.IsBlue,
+                            point,
+                            projectile.Direction,
+                            platform,
+                            soundManager);
                         shouldRemove = true;
                         break;
                     }
@@ -209,20 +222,28 @@ public class PortalController
         }
     }
 
-    private void PlaceSimplePortal(
+    private void PlacePortal(
         GameWorld world,
         bool isBlue,
         Point checkPoint,
         Vector2 direction,
-        Rectangle platform)
+        Rectangle platform,
+        SoundManager soundManager)
     {
         const int PortalWidth = 20;
         const int PortalHeight = 60;
+        const int MagnetDistance = 5;
 
         bool isWall = platform.Height > platform.Width;
 
         Rectangle newPortal;
         Vector2 exitDirection;
+
+        if (IsForbiddenPlatform(world, platform))
+        {
+            soundManager.PlayPortalInvalidSurface();
+            return;
+        }
 
         if (isWall)
         {
@@ -275,9 +296,165 @@ public class PortalController
             newPortal = new Rectangle(portalX, portalY, PortalHeight, PortalWidth);
         }
 
+        if (PortalTouchesBackgroundBlock(world, newPortal) ||
+            PortalTouchesElectricZone(world, newPortal) ||
+            PortalTouchesButton(world, newPortal) ||
+            PortalTouchesDoor(world, newPortal) ||
+            PortalOverlapsOtherPlatforms(world, newPortal, platform))
+        {
+            soundManager.PlayPortalInvalidSurface();
+            return;
+        }
+
+        if (PortalTouchesPlatformEdge(isWall, newPortal, platform))
+        {
+            soundManager.PlayPortalInvalidSurface();
+            return;
+        }
+
+        if (isBlue && world.OrangePortal != null)
+        {
+            Rectangle magnetZone = world.OrangePortal.Bounds;
+            magnetZone.Inflate(MagnetDistance, MagnetDistance);
+
+            if (magnetZone.Intersects(newPortal))
+            {
+                newPortal = world.OrangePortal.Bounds;
+                exitDirection = world.OrangePortal.ExitDirection;
+                world.OrangePortal = null;
+            }
+        }
+        else if (!isBlue && world.BluePortal != null)
+        {
+            Rectangle magnetZone = world.BluePortal.Bounds;
+            magnetZone.Inflate(MagnetDistance, MagnetDistance);
+
+            if (magnetZone.Intersects(newPortal))
+            {
+                newPortal = world.BluePortal.Bounds;
+                exitDirection = world.BluePortal.ExitDirection;
+                world.BluePortal = null;
+            }
+        }
+
+        var portal = new PortalModel(newPortal, exitDirection);
+
         if (isBlue)
-            world.BluePortal = new PortalModel(newPortal, exitDirection);
+        {
+            world.BluePortal = portal;
+            soundManager.PlayBluePortalOpen();
+        }
         else
-            world.OrangePortal = new PortalModel(newPortal, exitDirection);
+        {
+            world.OrangePortal = portal;
+            soundManager.PlayOrangePortalOpen();
+        }
+    }
+
+    private bool PointInsideBackgroundBlock(GameWorld world, Point point)
+    {
+        foreach (var block in world.BackgroundBlocks)
+        {
+            if (block.Contains(point))
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool PortalTouchesBackgroundBlock(GameWorld world, Rectangle portal)
+    {
+        foreach (var block in world.BackgroundBlocks)
+        {
+            if (portal.Intersects(block))
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool PortalTouchesElectricZone(GameWorld world, Rectangle portal)
+    {
+        foreach (var electricZone in world.ElectricZones)
+        {
+            if (portal.Intersects(electricZone))
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool PortalTouchesButton(GameWorld world, Rectangle portal)
+    {
+        return world.ButtonDoor.HasButtonDoorLevel &&
+               portal.Intersects(world.ButtonDoor.Button);
+    }
+
+    private bool PortalTouchesDoor(GameWorld world, Rectangle portal)
+    {
+        return world.ButtonDoor.HasButtonDoorLevel &&
+               !world.ButtonDoor.DoorOpen &&
+               portal.Intersects(world.ButtonDoor.Door);
+    }
+
+    private bool PortalOverlapsOtherPlatforms(
+        GameWorld world,
+        Rectangle portal,
+        Rectangle targetPlatform)
+    {
+        foreach (var platform in world.Platforms)
+        {
+            if (platform == targetPlatform)
+                continue;
+
+            if (platform == Rectangle.Empty)
+                continue;
+
+            if (portal.Intersects(platform))
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool PortalTouchesPlatformEdge(
+        bool isWall,
+        Rectangle portal,
+        Rectangle platform)
+    {
+        if (isWall)
+        {
+            return portal.Top <= platform.Top ||
+                   portal.Bottom >= platform.Bottom;
+        }
+
+        return portal.Left <= platform.Left ||
+               portal.Right >= platform.Right;
+    }
+
+    private bool IsForbiddenPlatform(GameWorld world, Rectangle platform)
+    {
+        var trap = world.MovingSpikeTrap;
+
+        if (trap.HasMovingSpikeTrap)
+        {
+            if (trap.PlatformIndex >= 0 &&
+                trap.PlatformIndex < world.Platforms.Count &&
+                world.Platforms[trap.PlatformIndex] == platform)
+                return true;
+
+            if (trap.SupportIndex >= 0 &&
+                trap.SupportIndex < world.Platforms.Count &&
+                world.Platforms[trap.SupportIndex] == platform)
+                return true;
+        }
+
+        if (world.ButtonDoor.HasButtonDoorLevel &&
+            world.ButtonDoor.DoorPlatformIndex >= 0 &&
+            world.ButtonDoor.DoorPlatformIndex < world.Platforms.Count &&
+            world.Platforms[world.ButtonDoor.DoorPlatformIndex] == platform)
+            return true;
+
+        return false;
     }
 }

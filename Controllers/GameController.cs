@@ -16,6 +16,7 @@ public class GameController
     private readonly ButtonDoorController _buttonDoorController;
     private readonly TrapController _trapController;
     private readonly ElectricityController _electricityController;
+    private readonly LevelProgressController _levelProgressController;
 
     private KeyboardState _previousKeyboardState;
 
@@ -29,7 +30,8 @@ public class GameController
         CubeController cubeController,
         ButtonDoorController buttonDoorController,
         TrapController trapController,
-        ElectricityController electricityController)
+        ElectricityController electricityController,
+        LevelProgressController levelProgressController)
     {
         _playerController = playerController;
         _collisionController = collisionController;
@@ -41,6 +43,7 @@ public class GameController
         _buttonDoorController = buttonDoorController;
         _trapController = trapController;
         _electricityController = electricityController;
+        _levelProgressController = levelProgressController;
     }
 
     // пауза
@@ -72,6 +75,11 @@ public class GameController
         soundManager.SfxVolume = world.Settings.SfxVolume;
         soundManager.UpdateVolumes();
 
+        _levelProgressController.Update(world, keyboard, mouse, deltaTime);
+
+        if (world.Progress.IsFading || world.Progress.LevelCompletedScreen)
+            return;
+
         HandleGameState(world, keyboard);
 
         if (world.State != GameState.Playing)
@@ -86,7 +94,7 @@ public class GameController
         _portalController.Update(world, mouse, deltaTime, soundManager);
         _cubeController.Update(world, keyboard, mouse, soundManager);
         _buttonDoorController.Update(world, soundManager);
-        
+
         CheckExit(world);
         CheckDeath(world);
     }
@@ -96,13 +104,7 @@ public class GameController
         if (!world.Player.Bounds.Intersects(world.Exit))
             return;
 
-        int nextLevel = world.CurrentLevel + 1;
-
-        // пока у нас перенесён только 1 уровень
-        if (nextLevel > 1)
-            nextLevel = 1;
-
-        _levelController.LoadLevel(world, nextLevel);
+        _levelProgressController.CompleteLevel(world);
     }
 
     private void CheckDeath(GameWorld world)
@@ -110,7 +112,7 @@ public class GameController
         // если игрок упал вниз
         if (world.Player.Position.Y > 950)
         {
-            _levelController.LoadLevel(world, world.CurrentLevel);
+            _levelProgressController.Die(world);
             return;
         }
 
@@ -119,7 +121,7 @@ public class GameController
         {
             if (world.Player.Bounds.Intersects(spike))
             {
-                _levelController.LoadLevel(world, world.CurrentLevel);
+                _levelProgressController.Die(world);
                 return;
             }
         }
@@ -131,7 +133,7 @@ public class GameController
             {
                 if (world.Player.Bounds.Intersects(electricZone))
                 {
-                    _levelController.LoadLevel(world, world.CurrentLevel);
+                    _levelProgressController.Die(world);
                     return;
                 }
             }
