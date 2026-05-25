@@ -21,6 +21,7 @@ public class Game1 : Game
     private CollisionController _collisionController;
     private PortalController _portalController;
     private SoundManager _soundManager;
+    private GameController _gameController;
 
     private float _musicVolume = 1f;
     private float _sfxVolume = 1f;
@@ -46,6 +47,12 @@ public class Game1 : Game
         _levelController = new LevelController();
         _collisionController = new CollisionController();
         _portalController = new PortalController();
+
+        _gameController = new GameController(
+            _playerController,
+            _collisionController,
+            _portalController,
+            _levelController);
 
         _soundManager = new SoundManager();
 
@@ -77,9 +84,12 @@ public class Game1 : Game
         _soundManager.SfxVolume = _sfxVolume;
         _soundManager.UpdateVolumes();
 
-        _playerController.Update(_world, keyboard);
-        _collisionController.ResolvePlayerCollisions(_world);
-        _portalController.Update(_world, mouse, deltaTime, _soundManager);
+        _gameController.Update(
+            _world,
+            keyboard,
+            mouse,
+            deltaTime,
+            _soundManager);
 
         base.Update(gameTime);
     }
